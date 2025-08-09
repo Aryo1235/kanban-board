@@ -28,7 +28,7 @@ export default function Layout() {
           <div className="flex items-center gap-8">
             <div
               className="text-xl font-bold text-lime-400 cursor-pointer"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/home")}
             >
               Kanban Board
             </div>

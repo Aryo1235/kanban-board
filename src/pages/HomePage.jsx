@@ -19,8 +19,6 @@ export default function HomePage() {
     return () => listener?.subscription.unsubscribe();
   }, []);
 
-  if (!user) return <AuthForm onAuth={() => window.location.reload()} />;
-
   return (
     <div className="flex flex-col items-center justify-center gap-6">
       <h1 className="text-3xl font-bold mb-2">
