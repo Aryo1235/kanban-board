@@ -140,7 +140,7 @@ function BoardLocal() {
               </svg>
             </button>
           </div>
-          <div className="flex gap-6 overflow-x-auto pb-6 w-full justify-center items-start">
+          <div className="flex gap-6 overflow-x-auto pb-6 w-full  justify-center items-start">
             {Object.entries(coloumns).map(([columnId, column]) => (
               <div
                 key={columnId}

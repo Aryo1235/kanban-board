@@ -8,6 +8,8 @@ import BoardDetail from "./pages/BoardDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./layout/Layout";
 import AuthForm from "./components/AuthForm";
+import LandingPage from "./pages/LandingPage";
+import LandingLayout from "./layout/LandingLayout";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -15,7 +17,10 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/" element={<AuthForm />} />
+        <Route element={<LandingLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthForm />} />
+        </Route>
         <Route element={<Layout />}>
           <Route path="/homepage" element={<HomePage />} />
           <Route element={<ProtectedRoute />}>
