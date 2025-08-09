@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
+import toast from "react-hot-toast";
 
 // Daftar warna kolom (bukan abu-abu)
 const columnColorList = [
@@ -48,18 +49,39 @@ export default function BoardDetail() {
   const [newTask, setNewTask] = useState({}); // { [columnId]: "" }
   const [addingColumn, setAddingColumn] = useState(false);
   const [addingTask, setAddingTask] = useState({}); // { [columnId]: false }
+  const [role, setRole] = useState("");
   // Drag & drop state
   const [draggedTask, setDraggedTask] = useState(null); // { task, fromColumnId }
   // Handler untuk drag & drop task antar kolom
+  const canEdit = role === "owner" || role === "editor";
+  const isViewer = role === "viewer";
+  // Untuk mencegah spam toast saat drag
+  const [dragToastShown, setDragToastShown] = useState(false);
+
   const handleDragStartTask = (task, fromColumnId) => {
+    if (!canEdit) {
+      toast.error("Hanya owner/editor yang bisa memindahkan task.");
+      setDragToastShown(true);
+      return;
+    }
     setDraggedTask({ task, fromColumnId });
+    setDragToastShown(false);
   };
 
   const handleDragOverTask = (e) => {
+    if (!canEdit) {
+      // Tidak perlu toast di dragOver agar tidak spam
+      return;
+    }
     e.preventDefault();
   };
 
   const handleDropTask = async (e, toColumnId) => {
+    if (!canEdit) {
+      // Tidak perlu toast di drop agar tidak spam
+      setDragToastShown(false); // reset agar drag berikutnya bisa munculkan toast lagi
+      return;
+    }
     e.preventDefault();
     if (!draggedTask) return;
     const { task, fromColumnId } = draggedTask;
@@ -78,11 +100,16 @@ export default function BoardDetail() {
       .eq("id", task.id);
     if (updateError) setError(updateError.message);
     setDraggedTask(null);
+    setDragToastShown(false);
     fetchData();
   };
 
   // Handler hapus task
   const handleDeleteTask = async (taskId) => {
+    if (!canEdit) {
+      toast.error("Hanya owner/editor yang bisa menghapus task.");
+      return;
+    }
     if (!window.confirm("Hapus task ini?")) return;
     setError("");
     const { error: delError } = await supabase
@@ -123,6 +150,26 @@ export default function BoardDetail() {
       return;
     }
     setBoard(boardData);
+    // Cek role user di board ini
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      setRole("");
+    } else if (boardData.user_id === userData.user.id) {
+      setRole("owner");
+    } else {
+      // cek di board_members
+      const { data: member, error: memberError } = await supabase
+        .from("board_members")
+        .select("role")
+        .eq("board_id", id)
+        .eq("user_id", userData.user.id)
+        .single();
+      if (memberError || !member) {
+        setRole("");
+      } else {
+        setRole(member.role);
+      }
+    }
     // Fetch columns
     const { data: columnsData, error: columnsError } = await supabase
       .from("columns")
@@ -160,6 +207,10 @@ export default function BoardDetail() {
 
   const handleAddColumn = async (e) => {
     e.preventDefault();
+    if (!canEdit) {
+      toast.error("Hanya owner/editor yang bisa menambah kolom.");
+      return;
+    }
     if (!newColumn.trim()) return;
     setAddingColumn(true);
     setError("");
@@ -188,6 +239,10 @@ export default function BoardDetail() {
   };
 
   const handleDeleteColumn = async (columnId) => {
+    if (!canEdit) {
+      toast.error("Hanya owner/editor yang bisa menghapus kolom.");
+      return;
+    }
     if (!window.confirm("Hapus kolom beserta semua task di dalamnya?")) return;
     setError("");
     // Hapus semua task di kolom ini
@@ -203,6 +258,10 @@ export default function BoardDetail() {
 
   const handleAddTask = async (e, columnId) => {
     e.preventDefault();
+    if (!canEdit) {
+      toast.error("Hanya owner/editor yang bisa menambah task.");
+      return;
+    }
     if (!newTask[columnId] || !newTask[columnId].trim()) return;
     setAddingTask((t) => ({ ...t, [columnId]: true }));
     setError("");
@@ -257,6 +316,12 @@ export default function BoardDetail() {
             type="submit"
             className="bg-lime-600 text-white px-4 py-2 rounded hover:bg-lime-700 transition-colors cursor-pointer ml-2"
             disabled={addingColumn}
+            onClick={(e) => {
+              if (!canEdit) {
+                e.preventDefault();
+                toast.error("Hanya owner/editor yang bisa menambah kolom.");
+              }
+            }}
           >
             Tambah Kolom
           </button>
@@ -281,7 +346,15 @@ export default function BoardDetail() {
                   <button
                     className="text-red-400 hover:text-red-300 text-sm ml-2 cursor-pointer"
                     title="Hapus kolom"
-                    onClick={() => handleDeleteColumn(col.id)}
+                    onClick={() => {
+                      if (!canEdit) {
+                        toast.error(
+                          "Hanya owner/editor yang bisa menghapus kolom."
+                        );
+                        return;
+                      }
+                      handleDeleteColumn(col.id);
+                    }}
                   >
                     🗑️
                   </button>
@@ -304,6 +377,14 @@ export default function BoardDetail() {
                     type="submit"
                     className="bg-lime-600 hover:bg-lime-700 px-3 py-2 rounded text-white font-bold"
                     disabled={addingTask[col.id]}
+                    onClick={(e) => {
+                      if (!canEdit) {
+                        e.preventDefault();
+                        toast.error(
+                          "Hanya owner/editor yang bisa menambah task."
+                        );
+                      }
+                    }}
                   >
                     {addingTask[col.id] ? "..." : "+"}
                   </button>
@@ -331,26 +412,28 @@ export default function BoardDetail() {
                       >
                         <div className="flex justify-between items-center">
                           <span>{task.content}</span>
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="text-red-400 hover:text-red-300 ml-2 cursor-pointer"
-                            aria-label="Delete"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
+                          {canEdit && (
+                            <button
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="text-red-400 hover:text-red-300 ml-2 cursor-pointer"
+                              aria-label="Delete"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h2a2 2 0 012 2v2"
-                              />
-                            </svg>
-                          </button>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h2a2 2 0 012 2v2"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
