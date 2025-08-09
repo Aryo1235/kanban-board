@@ -183,40 +183,44 @@ export default function AuthForm({ onAuth }) {
             </form>
           </div>
         ) : (
-          <form onSubmit={handleResetPassword}>
-            <input
-              type="email"
-              className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
-              placeholder="Email untuk reset password"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            {resetSent && (
-              <div className="text-green-400 mb-2 text-sm">
-                Link reset password telah dikirim ke email Anda.
-              </div>
-            )}
-            {error && <div className="text-red-400 mb-2 text-sm">{error}</div>}
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2"
-              disabled={loading}
-            >
-              {loading ? "Loading..." : "Kirim Link Reset Password"}
-            </button>
-            <button
-              type="button"
-              className="w-full text-lime-400 hover:underline text-sm"
-              onClick={() => {
-                setShowReset(false);
-                setResetSent(false);
-                setError("");
-              }}
-            >
-              Kembali ke Login
-            </button>
-          </form>
+          <div className="flex flex-col items-center justify-center ">
+            <form onSubmit={handleResetPassword}>
+              <input
+                type="email"
+                className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
+                placeholder="Email untuk reset password"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              {resetSent && (
+                <div className="text-green-400 mb-2 text-sm">
+                  Link reset password telah dikirim ke email Anda.
+                </div>
+              )}
+              {error && (
+                <div className="text-red-400 mb-2 text-sm">{error}</div>
+              )}
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2"
+                disabled={loading}
+              >
+                {loading ? "Loading..." : "Kirim Link Reset Password"}
+              </button>
+              <button
+                type="button"
+                className="w-full text-lime-400 hover:underline text-sm"
+                onClick={() => {
+                  setShowReset(false);
+                  setResetSent(false);
+                  setError("");
+                }}
+              >
+                Kembali ke Login
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>
