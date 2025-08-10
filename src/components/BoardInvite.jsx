@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 import useBoardInvite from "../hooks/useBoardInvite";
 import toast from "react-hot-toast";
 
 export default function BoardInvite({ boardId, canEdit }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
+  const [userId, setUserId] = useState(null);
   const {
     loading,
     error,
@@ -19,6 +21,15 @@ export default function BoardInvite({ boardId, canEdit }) {
     fetchMembers();
     // eslint-disable-next-line
   }, [boardId]);
+
+  useEffect(() => {
+    // Ambil user id dari Supabase
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) setUserId(data.user.id);
+    };
+    getUser();
+  }, []);
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -77,26 +88,29 @@ export default function BoardInvite({ boardId, canEdit }) {
                   <span className="text-yellow-400">(pending)</span>
                 )}
               </span>
-              {canEdit && m.status !== "pending" && m.role !== "owner" && (
-                <>
-                  <select
-                    value={m.role}
-                    onChange={(e) =>
-                      updateRole(m.id, e.target.value).then(fetchMembers)
-                    }
-                    className="bg-gray-700 text-white rounded p-1 mx-2"
-                  >
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
-                  <button
-                    onClick={() => removeMember(m.id).then(fetchMembers)}
-                    className="text-red-400 hover:text-red-300 ml-2"
-                  >
-                    Remove
-                  </button>
-                </>
-              )}
+              {canEdit &&
+                m.status !== "pending" &&
+                m.role !== "owner" &&
+                m.user_id !== userId && (
+                  <>
+                    <select
+                      value={m.role}
+                      onChange={(e) =>
+                        updateRole(m.id, e.target.value).then(fetchMembers)
+                      }
+                      className="bg-gray-700 text-white rounded p-1 mx-2"
+                    >
+                      <option value="editor">Editor</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                    <button
+                      onClick={() => removeMember(m.id).then(fetchMembers)}
+                      className="text-red-400 hover:text-red-300 ml-2"
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
             </li>
           ))}
         </ul>

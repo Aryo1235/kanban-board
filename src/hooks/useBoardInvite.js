@@ -16,6 +16,7 @@ export default function useBoardInvite(boardId) {
       .eq("board_id", boardId);
     if (error) setError(error.message);
     console.log(error);
+    console.log("Members data:", data);
     setMembers(data || []);
     setLoading(false);
   };
