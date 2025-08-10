@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import toast from "react-hot-toast";
+import BoardInvite from "../components/BoardInvite";
 
 // Daftar warna kolom (bukan abu-abu)
 const columnColorList = [
@@ -300,6 +301,7 @@ export default function BoardDetail() {
         <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-yellow-400 via-pink-400 mb-8">
           {board.name}
         </h2>
+        <BoardInvite boardId={board.id} canEdit={canEdit} />
         <form
           onSubmit={handleAddColumn}
           className="mb-8 flex max-w-lg w-full overflow-hidden "

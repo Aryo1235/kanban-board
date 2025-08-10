@@ -5,7 +5,8 @@ import { supabase } from "../supabaseClient";
 export default function BoardSupabase() {
   const [boards, setBoards] = useState([]);
   const [newBoard, setNewBoard] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // loading untuk fetch awal
+  const [adding, setAdding] = useState(false); // loading khusus tambah board
   const [error, setError] = useState("");
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
@@ -30,8 +31,9 @@ export default function BoardSupabase() {
       console.log("[FETCH] board_members untuk user", user.id);
       const { data: memberBoards, error: memberError } = await supabase
         .from("board_members")
-        .select("board_id, role")
-        .eq("user_id", user.id);
+        .select("board_id, role, status")
+        .eq("user_id", user.id)
+        .eq("status", "accepted");
       if (memberError) {
         setError(memberError.message);
         setLoading(false);
@@ -98,7 +100,7 @@ export default function BoardSupabase() {
   const handleAddBoard = async (e) => {
     e.preventDefault();
     if (!newBoard.trim() || !user) return;
-    setLoading(true);
+    setAdding(true);
     setError("");
 
     try {
@@ -138,18 +140,27 @@ export default function BoardSupabase() {
 
       if (columnsError) throw columnsError;
 
-      // 4. Refresh boards
-      const { data: updatedBoards } = await supabase
-        .from("boards")
-        .select("*")
-        .order("created_at", { ascending: true });
-
-      setBoards(updatedBoards || []);
+      // Optimistic update: langsung tambahkan board baru ke state dan sort by created_at desc
+      const newBoardObj = {
+        ...boardData,
+        role: "owner",
+        status: "accepted",
+      };
+      setBoards((prev) => {
+        const boardsSorted = [...prev, newBoardObj].sort((a, b) => {
+          // created_at bisa null jika error, fallback ke id
+          if (a.created_at && b.created_at) {
+            return new Date(b.created_at) - new Date(a.created_at);
+          }
+          return (b.id || 0) - (a.id || 0);
+        });
+        return boardsSorted;
+      });
       setNewBoard("");
     } catch (error) {
       setError(error.message);
     } finally {
-      setLoading(false);
+      setAdding(false);
     }
   };
   // Edit board inline
@@ -232,14 +243,14 @@ export default function BoardSupabase() {
           placeholder="Nama board baru"
           value={newBoard}
           onChange={(e) => setNewBoard(e.target.value)}
-          disabled={loading}
+          disabled={adding}
         />
         <button
           type="submit"
           className="bg-lime-600 hover:bg-lime-700 px-4 py-2 rounded text-white font-bold"
-          disabled={loading}
+          disabled={adding}
         >
-          Tambah
+          {adding ? "Menambah..." : "Tambah"}
         </button>
       </form>
       {error && <div className="text-red-400 mb-4">{error}</div>}
@@ -301,6 +312,11 @@ export default function BoardSupabase() {
                   {board.role === "editor" && (
                     <span className="ml-2 text-xs text-amber-400">
                       (Editor)
+                    </span>
+                  )}
+                  {board.status && board.status !== "accepted" && (
+                    <span className="ml-2 text-xs text-yellow-400">
+                      ({board.status})
                     </span>
                   )}
                 </span>

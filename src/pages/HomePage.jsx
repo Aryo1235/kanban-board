@@ -1,6 +1,7 @@
 import AuthForm from "../components/AuthForm";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import BoardInviteAccept from "../components/BoardInviteAccept";
 
 export default function HomePage() {
   const [user, setUser] = useState(null);
@@ -24,6 +25,7 @@ export default function HomePage() {
       <h1 className="text-3xl font-bold mb-2">
         Selamat datang di Kanban Board!
       </h1>
+      <BoardInviteAccept />
       <p className="text-gray-300 text-center max-w-xl">
         Silakan pilih menu di atas untuk mengelola board Supabase atau board
         lokal.
