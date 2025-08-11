@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import useBoardInvite from "../hooks/useBoardInvite";
 import toast from "react-hot-toast";
@@ -7,6 +7,7 @@ export default function BoardInvite({ boardId, canEdit }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
   const [userId, setUserId] = useState(null);
+  const realtimeChannel = useRef(null);
   const {
     loading,
     error,
@@ -21,6 +22,49 @@ export default function BoardInvite({ boardId, canEdit }) {
     fetchMembers();
     // eslint-disable-next-line
   }, [boardId]);
+
+  // Realtime subscription: update members jika ada perubahan di board_members
+  useEffect(() => {
+    // Unsubscribe channel lama jika ada
+    if (realtimeChannel.current) {
+      supabase.removeChannel(realtimeChannel.current);
+    }
+    // Subscribe ke event board_members untuk boardId ini
+    const channel = supabase
+      .channel("realtime:board-invite-" + boardId)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "board_members",
+          filter: `board_id=eq.${boardId}`,
+        },
+        (payload) => {
+          // Hanya fetch jika ada perubahan di board ini
+          fetchMembers();
+          // Tampilkan notifikasi jika role user login berubah
+          if (
+            payload.eventType === "UPDATE" &&
+            userId &&
+            payload.new.user_id === userId &&
+            payload.old.role !== payload.new.role
+          ) {
+            toast.success(
+              `Role Anda di board ini berubah menjadi: ${payload.new.role}`
+            );
+          }
+        }
+      )
+      .subscribe();
+    realtimeChannel.current = channel;
+    // Cleanup
+    return () => {
+      if (realtimeChannel.current) {
+        supabase.removeChannel(realtimeChannel.current);
+      }
+    };
+  }, [boardId, fetchMembers, userId]);
 
   useEffect(() => {
     // Ambil user id dari Supabase

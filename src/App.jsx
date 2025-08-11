@@ -10,6 +10,7 @@ import Layout from "./layout/Layout";
 import AuthForm from "./components/AuthForm";
 import LandingPage from "./pages/LandingPage";
 import LandingLayout from "./layout/LandingLayout";
+import RealtimeTest from "./pages/RealtimeTest";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-right" />
       <Routes>
+        <Route path="/realtime" element={<RealtimeTest />} />
         <Route element={<LandingLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthForm />} />

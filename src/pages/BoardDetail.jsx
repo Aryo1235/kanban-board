@@ -1,8 +1,9 @@
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import toast from "react-hot-toast";
 import BoardInvite from "../components/BoardInvite";
+import Column from "../components/Column";
 
 // Daftar warna kolom (bukan abu-abu)
 const columnColorList = [
@@ -39,6 +40,7 @@ const columnColorList = [
     border: "border-cyan-500",
   },
 ];
+
 export default function BoardDetail() {
   const { id } = useParams();
   const [columns, setColumns] = useState([]);
@@ -56,8 +58,69 @@ export default function BoardDetail() {
   // Handler untuk drag & drop task antar kolom
   const canEdit = role === "owner" || role === "editor";
   const isViewer = role === "viewer";
+  console.log(
+    "BoardDetail rendered with role:",
+    role,
+    "canEdit:",
+    canEdit,
+    "isViewer:",
+    isViewer
+  );
+  // Subscribe perubahan role user di board_members agar canEdit/isViewer selalu update
+  // Gunakan role sebagai dependency agar event realtime trigger re-render dan prop role update ke Column/TaskList
+  useEffect(() => {
+    let channel;
+    let mounted = true;
+    let userId;
+    const subscribeRole = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      userId = userData?.user?.id;
+      if (!userId) return;
+      channel = supabase
+        .channel("realtime:role-" + id + "-" + userId)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "board_members",
+            filter: `board_id=eq.${id},user_id=eq.${userId}`,
+          },
+          async (payload) => {
+            // Ambil role terbaru dari DB
+            const { data: member } = await supabase
+              .from("board_members")
+              .select("role")
+              .eq("board_id", id)
+              .eq("user_id", userId)
+              .single();
+            if (mounted) {
+              if (member) setRole(member.role);
+            }
+          }
+        )
+        .subscribe();
+    };
+    subscribeRole();
+    return () => {
+      mounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [id, role]);
+
+  // Reset state saat role berubah agar UI/validasi langsung update
+  useEffect(() => {
+    setNewColumn("");
+    setNewTask({});
+    setDraggedTask(null);
+    setAddingColumn(false);
+    setAddingTask({});
+  }, [role]);
   // Untuk mencegah spam toast saat drag
   const [dragToastShown, setDragToastShown] = useState(false);
+
+  // Realtime channel ref
+  const realtimeChannel = useRef(null);
 
   const handleDragStartTask = (task, fromColumnId) => {
     if (!canEdit) {
@@ -201,10 +264,89 @@ export default function BoardDetail() {
     setLoading(false);
   };
 
+  // Fetch data awal saja
   useEffect(() => {
     fetchData(true);
     // eslint-disable-next-line
   }, [id]);
+
+  // Realtime subscription: update state langsung dari payload event
+  useEffect(() => {
+    // Unsubscribe channel lama jika ada
+    if (realtimeChannel.current) {
+      supabase.removeChannel(realtimeChannel.current);
+    }
+
+    // Subscribe ke semua perubahan tabel columns dan tasks
+    const channel = supabase
+      .channel("realtime:board-detail")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "columns" },
+        (payload) => {
+          console.log("Realtime event columns:", payload);
+          switch (payload.eventType) {
+            case "INSERT":
+              setColumns((prev) => [...prev, payload.new]);
+              break;
+            case "UPDATE":
+              setColumns((prev) =>
+                prev.map((col) =>
+                  col.id === payload.new.id ? payload.new : col
+                )
+              );
+              break;
+            case "DELETE":
+              setColumns((prev) =>
+                prev.filter((col) => col.id !== payload.old.id)
+              );
+              setTasks((prev) =>
+                prev.filter((task) => task.column_id !== payload.old.id)
+              );
+              break;
+            default:
+              break;
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        (payload) => {
+          console.log("Realtime event tasks:", payload);
+          switch (payload.eventType) {
+            case "INSERT":
+              setTasks((prev) => [...prev, payload.new]);
+              break;
+            case "UPDATE":
+              setTasks((prev) =>
+                prev.map((task) =>
+                  task.id === payload.new.id ? payload.new : task
+                )
+              );
+              break;
+            case "DELETE":
+              setTasks((prev) =>
+                prev.filter((task) => task.id !== payload.old.id)
+              );
+              break;
+            default:
+              break;
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Channel status:", status);
+      });
+    realtimeChannel.current = channel;
+
+    // Cleanup subscription saat komponen unmount
+    return () => {
+      if (realtimeChannel.current) {
+        supabase.removeChannel(realtimeChannel.current);
+      }
+    };
+  }, [id, columns.length]); // Tambahkan columns.length untuk trigger ulang saat ada perubahan struktur kolom
 
   const handleAddColumn = async (e) => {
     e.preventDefault();
@@ -278,7 +420,34 @@ export default function BoardDetail() {
         position: maxPos + 1,
       },
     ]);
-    if (insertError) setError(insertError.message);
+    if (insertError) {
+      setError(insertError.message);
+      console.error("Insert error:", insertError);
+      return;
+    }
+
+    // DEBUG: Cek data hasil insert FE dan relasinya
+    const { data: insertedTask, error: fetchInsertedError } = await supabase
+      .from("tasks")
+      .select("*, columns(*, boards(*))")
+      .eq("content", newTask[columnId])
+      .order("id", { ascending: false })
+      .limit(1)
+      .single();
+
+    console.log("DEBUG: Task FE baru:", insertedTask, fetchInsertedError);
+    if (insertedTask) {
+      console.log("DEBUG: column_id:", insertedTask.column_id);
+      console.log("DEBUG: columns:", insertedTask.columns);
+      if (insertedTask.columns) {
+        console.log(
+          "DEBUG: board_id di columns:",
+          insertedTask.columns.board_id
+        );
+        console.log("DEBUG: boards:", insertedTask.columns.boards);
+      }
+    }
+
     setNewTask((t) => ({ ...t, [columnId]: "" }));
     setAddingTask((t) => ({ ...t, [columnId]: false }));
     fetchData();
@@ -329,120 +498,28 @@ export default function BoardDetail() {
           </button>
         </form>
         <div className="flex gap-6 overflow-x-auto pb-6 w-full justify-center items-start">
-          {columns.map((col, idx) => {
-            const style = getColumnStyle(col, idx);
-            return (
-              <div
-                key={col.id}
-                className={`flex-shrink-0 w-80 p-3 bg-gray-800 rounded-lg border-t-4 min-h-40 ${style.border}`}
-                onDragOver={handleDragOverTask}
-                onDrop={(e) => handleDropTask(e, col.id)}
-              >
-                <div
-                  className={`p-4 text-white font-bold text-xl mb-4 rounded-t-md flex justify-between items-center ${style.header}`}
-                >
-                  <span className="ml-4 bg-gray-900 rounded-full px-2 py-1 text-sm bg-opacity-30">
-                    {tasks.filter((t) => t.column_id === col.id).length}
-                  </span>
-                  <span>{col.name}</span>
-                  <button
-                    className="text-red-400 hover:text-red-300 text-sm ml-2 cursor-pointer"
-                    title="Hapus kolom"
-                    onClick={() => {
-                      if (!canEdit) {
-                        toast.error(
-                          "Hanya owner/editor yang bisa menghapus kolom."
-                        );
-                        return;
-                      }
-                      handleDeleteColumn(col.id);
-                    }}
-                  >
-                    🗑️
-                  </button>
-                </div>
-                <form
-                  onSubmit={(e) => handleAddTask(e, col.id)}
-                  className="mb-3 flex gap-2"
-                >
-                  <input
-                    type="text"
-                    className="p-2 rounded bg-gray-700 text-white border border-gray-600 flex-1"
-                    placeholder="Tambah task"
-                    value={newTask[col.id] || ""}
-                    onChange={(e) =>
-                      setNewTask((t) => ({ ...t, [col.id]: e.target.value }))
-                    }
-                    disabled={addingTask[col.id]}
-                  />
-                  <button
-                    type="submit"
-                    className="bg-lime-600 hover:bg-lime-700 px-3 py-2 rounded text-white font-bold"
-                    disabled={addingTask[col.id]}
-                    onClick={(e) => {
-                      if (!canEdit) {
-                        e.preventDefault();
-                        toast.error(
-                          "Hanya owner/editor yang bisa menambah task."
-                        );
-                      }
-                    }}
-                  >
-                    {addingTask[col.id] ? "..." : "+"}
-                  </button>
-                </form>
-                <div className="space-y-2">
-                  {tasks.filter((t) => t.column_id === col.id).length === 0 && (
-                    <div className="text-gray-500 text-center p-3">
-                      No tasks available
-                    </div>
-                  )}
-                  {tasks
-                    .filter((t) => t.column_id === col.id)
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStartTask(task, col.id)}
-                        className="bg-gray-700 text-white p-3 rounded-md cursor-move hover:bg-gray-600 transition-colors"
-                        style={{
-                          opacity:
-                            draggedTask && draggedTask.task.id === task.id
-                              ? 0.5
-                              : 1,
-                        }}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span>{task.content}</span>
-                          {canEdit && (
-                            <button
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="text-red-400 hover:text-red-300 ml-2 cursor-pointer"
-                              aria-label="Delete"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h2a2 2 0 012 2v2"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            );
-          })}
+          {columns.map((col, idx) => (
+            <Column
+              key={`${col.id}-${role}`}
+              col={col}
+              tasks={tasks.filter((t) => t.column_id === col.id)}
+              idx={idx}
+              canEdit={canEdit}
+              isViewer={isViewer}
+              role={role}
+              draggedTask={draggedTask}
+              handleDragOverTask={handleDragOverTask}
+              handleDropTask={handleDropTask}
+              handleDragStartTask={handleDragStartTask}
+              handleDeleteTask={handleDeleteTask}
+              handleDeleteColumn={handleDeleteColumn}
+              handleAddTask={handleAddTask}
+              newTask={newTask}
+              setNewTask={setNewTask}
+              addingTask={addingTask}
+              toast={toast}
+            />
+          ))}
         </div>
       </div>
     </div>
