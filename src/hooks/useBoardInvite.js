@@ -12,7 +12,7 @@ export default function useBoardInvite(boardId) {
     setError("");
     const { data, error } = await supabase
       .from("board_members")
-      .select("*, profiles: user_id (email, username)")
+      .select("*, profiles: user_id (email, username,avatar_url, phone)")
       .eq("board_id", boardId);
     if (error) setError(error.message);
     console.log(error);

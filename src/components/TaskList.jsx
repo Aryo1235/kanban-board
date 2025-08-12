@@ -11,6 +11,7 @@ export default function TaskList({
   handleDeleteTask,
   toast,
 }) {
+  console.log(role, canEdit, isViewer);
   const filteredTasks = tasks.filter((t) => t.column_id === colId);
   return (
     <div className="space-y-2">

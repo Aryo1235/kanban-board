@@ -2,11 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import useBoardInvite from "../hooks/useBoardInvite";
 import toast from "react-hot-toast";
+import ModalProfileMembers from "./ModalProfileMembers";
+import ModalInviteMemberDropdown from "./ModalInviteMemberDropdown";
 
 export default function BoardInvite({ boardId, canEdit }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
   const [userId, setUserId] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [anchorPos, setAnchorPos] = useState(null);
+  const [openInvite, setOpenInvite] = useState(false);
+  const [inviteAnchor, setInviteAnchor] = useState(null);
   const realtimeChannel = useRef(null);
   const {
     loading,
@@ -17,12 +23,12 @@ export default function BoardInvite({ boardId, canEdit }) {
     updateRole,
     removeMember,
   } = useBoardInvite(boardId);
-
+  console.log("BoardInvite members:", members);
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line
   }, [boardId]);
-
+  console.log(email);
   // Realtime subscription: update members jika ada perubahan di board_members
   useEffect(() => {
     // Unsubscribe channel lama jika ada
@@ -89,76 +95,79 @@ export default function BoardInvite({ boardId, canEdit }) {
   };
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg mb-6 w-full max-w-lg">
-      <h3 className="text-lg font-bold text-white mb-2">Invite Member</h3>
-      {canEdit && (
-        <form onSubmit={handleInvite} className="flex gap-2 mb-4">
-          <input
-            type="email"
-            className="flex-1 p-2 rounded bg-gray-700 text-white"
-            placeholder="Email user"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <select
-            className="p-2 rounded bg-gray-700 text-white"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
-          </select>
+    <>
+      <div className="w-full flex justify-center items-center h-12 mb-32">
+        <div className=" w-full  flex gap-4 justify-start items-center px-2">
+          <div className="bg-fuchsia-300 flex items-center gap-2 px-4 py-2 rounded-md">
+            {members.slice(0, 5).map((member) => (
+              <button
+                key={member.id}
+                title={member.profiles?.email || "avatar"}
+                onClick={(e) => {
+                  setSelectedMember(member);
+                  setOpenInvite(false); // Tutup modal invite
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setAnchorPos({
+                    top: rect.bottom + window.scrollY,
+                    left: rect.left + window.scrollX,
+                  });
+                }}
+                className="focus:outline-none cursor-pointer"
+                type="button"
+              >
+                {member.profiles?.avatar_url ? (
+                  <img
+                    src={member.profiles.avatar_url}
+                    alt={member.profiles.email || "avatar"}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+                )}
+              </button>
+            ))}
+            {members.length > 5 && (
+              <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold">
+                +{members.length - 5}
+              </div>
+            )}
+          </div>
           <button
-            type="submit"
-            className="bg-lime-600 text-white px-4 py-2 rounded hover:bg-lime-700"
-            disabled={loading}
+            className="py-3 px-4 bg-amber-300 rounded-md text-md text-white"
+            onClick={(e) => {
+              setOpenInvite(true);
+              setSelectedMember(null); // Tutup modal profile
+              const rect = e.currentTarget.getBoundingClientRect();
+              setInviteAnchor({
+                top: rect.bottom + window.scrollY,
+                left: rect.left + window.scrollX,
+              });
+            }}
           >
-            Invite
+            Invite a new member
           </button>
-        </form>
-      )}
-      <div>
-        <h4 className="text-white font-semibold mb-1">Members:</h4>
-        <ul>
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between text-white mb-1"
-            >
-              <span>
-                {m.profiles?.email || m.user_id} - {m.role}{" "}
-                {m.status === "pending" && (
-                  <span className="text-yellow-400">(pending)</span>
-                )}
-              </span>
-              {canEdit &&
-                m.status !== "pending" &&
-                m.role !== "owner" &&
-                m.user_id !== userId && (
-                  <>
-                    <select
-                      value={m.role}
-                      onChange={(e) =>
-                        updateRole(m.id, e.target.value).then(fetchMembers)
-                      }
-                      className="bg-gray-700 text-white rounded p-1 mx-2"
-                    >
-                      <option value="editor">Editor</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
-                    <button
-                      onClick={() => removeMember(m.id).then(fetchMembers)}
-                      className="text-red-400 hover:text-red-300 ml-2"
-                    >
-                      Remove
-                    </button>
-                  </>
-                )}
-            </li>
-          ))}
-        </ul>
+        </div>
       </div>
-    </div>
+      <ModalProfileMembers
+        open={!!selectedMember}
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        anchorPos={anchorPos}
+      />
+      <ModalInviteMemberDropdown
+        open={openInvite}
+        anchorPos={inviteAnchor}
+        onClose={() => setOpenInvite(false)}
+        canEdit={canEdit}
+        inviteMember={inviteMember}
+        members={members}
+        userId={userId}
+        updateRole={updateRole}
+        removeMember={removeMember}
+        fetchMembers={fetchMembers}
+        loading={loading}
+        error={error}
+      />
+    </>
   );
 }

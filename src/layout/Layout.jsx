@@ -1,7 +1,7 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-
+import { MdOutlineViewKanban, MdHomeFilled } from "react-icons/md";
 export default function Layout() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
@@ -22,48 +22,68 @@ export default function Layout() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="min-h-screen bg-gray-900 text-white flex overflow-hidden">
       {user && (
-        <header className="flex sticky top-0 items-center justify-between px-6 py-4 bg-gray-950 border-b border-gray-800">
-          <div className="flex items-center gap-8">
-            <div
-              className="text-xl font-bold text-lime-400 cursor-pointer"
-              onClick={() => navigate("/home")}
-            >
-              Kanban Board
+        <section className="flex gap-2">
+          <aside className="w-64  bg-gray-800 p-6 border-r border-gray-700 hidden md:block">
+            <div className="flex flex-col justify-between h-full">
+              <div>
+                <h2 className="text-lg font-bold mb-4">Boards</h2>
+
+                <ul className="space-y-4 ">
+                  <Link
+                    to="/home"
+                    className="flex  items-center hover:bg-gray-700 py-2 px-2 rounded-lg"
+                  >
+                    <MdHomeFilled className=" mr-2" size={28} />
+                    <span className="text-white ">Home</span>
+                  </Link>
+
+                  <Link
+                    to="/supabase"
+                    className="flex  items-center  hover:bg-gray-700 py-2 px-2 rounded-lg"
+                  >
+                    <MdOutlineViewKanban className=" mr-2" size={28} />
+                    <span className="text-white ">Board 1</span>
+                  </Link>
+                </ul>
+              </div>
+              <div>
+                <button
+                  className="mt-8 bg-red-500 py-2 px-2 rounded-md w-full cursor-pointer"
+                  onClick={() => {
+                    supabase.auth.signOut();
+                    navigate("/");
+                  }}
+                  title="Log out"
+                >
+                  Log out
+                </button>
+              </div>
             </div>
-            <nav className="flex gap-4">
-              <button
-                className="text-lime-400 hover:underline"
-                onClick={() => navigate("/supabase")}
-              >
-                Supabase Board
-              </button>
-              <button
-                className="text-lime-400 hover:underline"
-                onClick={() => navigate("/local")}
-              >
-                Local Board
-              </button>
-            </nav>
+          </aside>
+        </section>
+      )}
+      <div className="flex-1 flex flex-col overflow-x-hidden">
+        <header className="max-w-full h-20  p-6 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Kanban Board</h1>
+            <p className="text-sm text-gray-400">
+              Welcome to your Kanban Board
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-300">{user.email}</span>
-            <button
-              className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate("/");
-              }}
-            >
-              Logout
-            </button>
+          <div>
+            {user && (
+              <span className="text-sm text-gray-400">
+                Welcome, {user.email}
+              </span>
+            )}
           </div>
         </header>
-      )}
-      <main className="flex-1 flex flex-col items-center justify-center">
-        <Outlet />
-      </main>
+        <main className="container mx-auto px-4 py-4 overflow-x-hidden">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

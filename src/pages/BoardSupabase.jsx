@@ -234,7 +234,7 @@ export default function BoardSupabase() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center p-8">
+    <div className=" bg-gray-900 text-white flex flex-col items-center p-8">
       <h1 className="text-3xl font-bold mb-6">Board Saya (Supabase)</h1>
       <form onSubmit={handleAddBoard} className="flex gap-2 mb-6">
         <input

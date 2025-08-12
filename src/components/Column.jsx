@@ -20,6 +20,7 @@ export default function Column({
   addingTask,
   toast,
 }) {
+  console.log(role, canEdit, isViewer);
   // Daftar warna kolom (bisa diimpor dari util jika ingin)
   const columnColorList = [
     {
@@ -64,7 +65,7 @@ export default function Column({
 
   return (
     <div
-      className={`flex-shrink-0 w-80 p-3 bg-gray-800 rounded-lg border-t-4 min-h-40 ${style.border}`}
+      className={`flex-shrink-0  w-80 p-3 bg-gray-800 rounded-lg border-t-4 min-h-40 ${style.border}`}
       onDragOver={handleDragOverTask}
       onDrop={(e) => handleDropTask(e, col.id)}
     >

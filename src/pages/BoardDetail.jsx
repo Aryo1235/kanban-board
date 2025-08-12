@@ -58,16 +58,8 @@ export default function BoardDetail() {
   // Handler untuk drag & drop task antar kolom
   const canEdit = role === "owner" || role === "editor";
   const isViewer = role === "viewer";
-  console.log(
-    "BoardDetail rendered with role:",
-    role,
-    "canEdit:",
-    canEdit,
-    "isViewer:",
-    isViewer
-  );
+
   // Subscribe perubahan role user di board_members agar canEdit/isViewer selalu update
-  // Gunakan role sebagai dependency agar event realtime trigger re-render dan prop role update ke Column/TaskList
   useEffect(() => {
     let channel;
     let mounted = true;
@@ -106,7 +98,7 @@ export default function BoardDetail() {
       mounted = false;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [id, role]);
+  }, [id]);
 
   // Reset state saat role berubah agar UI/validasi langsung update
   useEffect(() => {
@@ -465,12 +457,12 @@ export default function BoardDetail() {
     return <div className="text-gray-400 p-8">Board tidak ditemukan.</div>;
 
   return (
-    <div className="p-6 bg-gray-900 min-h-screen flex justify-center items-center">
+    <div className="py-2 px-4 bg-gray-900 min-h-screen overflow-hidden">
+      <BoardInvite boardId={board.id} canEdit={canEdit} />
       <div className=" w-full flex flex-col items-center justify-center">
         <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-yellow-400 via-pink-400 mb-8">
           {board.name}
         </h2>
-        <BoardInvite boardId={board.id} canEdit={canEdit} />
         <form
           onSubmit={handleAddColumn}
           className="mb-8 flex max-w-lg w-full overflow-hidden "
@@ -497,10 +489,10 @@ export default function BoardDetail() {
             Tambah Kolom
           </button>
         </form>
-        <div className="flex gap-6 overflow-x-auto pb-6 w-full justify-center items-start">
+        <div className="flex gap-6 overflow-x-auto pb-6 w-full justify-start items-start">
           {columns.map((col, idx) => (
             <Column
-              key={`${col.id}-${role}`}
+              key={col.id}
               col={col}
               tasks={tasks.filter((t) => t.column_id === col.id)}
               idx={idx}
