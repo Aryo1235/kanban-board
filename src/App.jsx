@@ -11,6 +11,7 @@ import AuthForm from "./components/AuthForm";
 import LandingPage from "./pages/LandingPage";
 import LandingLayout from "./layout/LandingLayout";
 import RealtimeTest from "./pages/RealtimeTest";
+import Profile from "./pages/Profile";
 import { Toaster } from "react-hot-toast";
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/supabase" element={<BoardSupabase />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/supabase/board/:id" element={<BoardDetail />} />
           </Route>
           <Route path="/local" element={<BoardLocal />} />
