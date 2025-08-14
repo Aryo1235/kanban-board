@@ -41,6 +41,19 @@ export default function BoardInviteAccept() {
     }
   };
 
+  const handleDecline = async (memberId) => {
+    const { error } = await supabase
+      .from("board_members")
+      .delete()
+      .eq("id", memberId);
+    if (!error) {
+      // Update state pendingInvites di HomePage
+      setPendingInvites((prev) => prev.filter((i) => i.id !== memberId));
+    } else {
+      console.log("Delete error:", error);
+    }
+  };
+
   if (loading) return <div className="text-white">Loading...</div>;
   if (pendingInvites.length === 0)
     return <div className="text-gray-400">Tidak ada undangan board.</div>;
@@ -67,7 +80,7 @@ export default function BoardInviteAccept() {
               </button>
               <button
                 className="bg-red-500 text-white px-3 py-1 rounded"
-                onClick={() => handleRespond(inv.id, false)}
+                onClick={() => handleDecline(inv.id)}
               >
                 Decline
               </button>

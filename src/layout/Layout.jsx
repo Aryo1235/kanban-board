@@ -7,7 +7,7 @@ export default function Layout() {
   const [profile, setProfile] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
-  console.log("Layout profile:", profile);
+
   useEffect(() => {
     let subscription;
     const fetchProfile = async () => {

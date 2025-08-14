@@ -31,7 +31,7 @@ export default function ModalInviteMemberDropdown({
 
   return (
     <div
-      className="fixed z-50 mb-4"
+      className="fixed z-50"
       style={{
         top: anchorPos.top + 10,
         left: anchorPos.left,

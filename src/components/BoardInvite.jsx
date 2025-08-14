@@ -27,7 +27,7 @@ export default function BoardInvite({ boardId, canEdit }) {
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line
-  }, [boardId]);
+  }, [boardId, members.length]);
   console.log(email);
   // Realtime subscription: update members jika ada perubahan di board_members
   useEffect(() => {
@@ -44,12 +44,11 @@ export default function BoardInvite({ boardId, canEdit }) {
           event: "*",
           schema: "public",
           table: "board_members",
-          filter: `board_id=eq.${boardId}`,
         },
         (payload) => {
-          // Hanya fetch jika ada perubahan di board ini
+          console.log("Realtime event:", payload);
           fetchMembers();
-          // Tampilkan notifikasi jika role user login berubah
+          // Hanya fetch jika ada perubahan di board ini
           if (
             payload.eventType === "UPDATE" &&
             userId &&
@@ -99,33 +98,36 @@ export default function BoardInvite({ boardId, canEdit }) {
       <div className="w-full flex justify-center items-center h-12 mb-32">
         <div className=" w-full  flex gap-4 justify-start items-center px-2">
           <div className="bg-fuchsia-300 flex items-center gap-2 px-4 py-2 rounded-md">
-            {members.slice(0, 5).map((member) => (
-              <button
-                key={member.id}
-                title={member.profiles?.email || "avatar"}
-                onClick={(e) => {
-                  setSelectedMember(member);
-                  setOpenInvite(false); // Tutup modal invite
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setAnchorPos({
-                    top: rect.bottom + window.scrollY,
-                    left: rect.left + window.scrollX,
-                  });
-                }}
-                className="focus:outline-none cursor-pointer"
-                type="button"
-              >
-                {member.profiles?.avatar_url ? (
-                  <img
-                    src={member.profiles.avatar_url}
-                    alt={member.profiles.email || "avatar"}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                )}
-              </button>
-            ))}
+            {members
+              .filter((member) => member.status === "accepted")
+              .slice(0, 5)
+              .map((member) => (
+                <button
+                  key={member.id}
+                  title={member.profiles?.email || "avatar"}
+                  onClick={(e) => {
+                    setSelectedMember(member);
+                    setOpenInvite(false);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setAnchorPos({
+                      top: rect.bottom + window.scrollY,
+                      left: rect.left + window.scrollX,
+                    });
+                  }}
+                  className="focus:outline-none cursor-pointer"
+                  type="button"
+                >
+                  {member.profiles?.avatar_url ? (
+                    <img
+                      src={member.profiles.avatar_url}
+                      alt={member.profiles.email || "avatar"}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+                  )}
+                </button>
+              ))}
             {members.length > 5 && (
               <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center text-white font-bold">
                 +{members.length - 5}
