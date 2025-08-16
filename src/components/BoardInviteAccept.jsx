@@ -1,41 +1,20 @@
-import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { supabase } from "../supabaseClient";
 import useBoardInvite from "../hooks/useBoardInvite";
-import toast from "react-hot-toast";
 
-export default function BoardInviteAccept() {
-  const [pendingInvites, setPendingInvites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
-
-  useEffect(() => {
-    const fetchInvites = async () => {
-      setLoading(true);
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        setLoading(false);
-        return;
-      }
-      setUserId(userData.user.id);
-      // Ambil undangan pending untuk user ini
-      const { data, error } = await supabase
-        .from("board_members")
-        .select("*, boards: board_id (name)")
-        .eq("user_id", userData.user.id)
-        .eq("status", "pending");
-      setPendingInvites(data || []);
-      setLoading(false);
-    };
-    fetchInvites();
-  }, []);
-
+export default function BoardInviteAccept({
+  pendingInvites,
+  loading,
+  userId,
+  fetchInvites,
+}) {
   const { respondInvite } = useBoardInvite();
 
   const handleRespond = async (memberId, accept) => {
     const ok = await respondInvite(memberId, accept);
     if (ok) {
       toast.success(accept ? "Bergabung ke board!" : "Undangan ditolak.");
-      setPendingInvites((inv) => inv.filter((i) => i.id !== memberId));
+      fetchInvites(userId);
     } else {
       toast.error("Gagal memproses undangan");
     }
@@ -47,8 +26,7 @@ export default function BoardInviteAccept() {
       .delete()
       .eq("id", memberId);
     if (!error) {
-      // Update state pendingInvites di HomePage
-      setPendingInvites((prev) => prev.filter((i) => i.id !== memberId));
+      fetchInvites(userId);
     } else {
       console.log("Delete error:", error);
     }

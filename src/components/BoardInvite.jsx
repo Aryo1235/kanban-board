@@ -1,34 +1,33 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import useBoardInvite from "../hooks/useBoardInvite";
 import toast from "react-hot-toast";
 import ModalProfileMembers from "./ModalProfileMembers";
 import ModalInviteMemberDropdown from "./ModalInviteMemberDropdown";
 
-export default function BoardInvite({ boardId, canEdit }) {
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState("viewer");
-  const [userId, setUserId] = useState(null);
+export default function BoardInvite({
+  boardId,
+  canEdit,
+  members,
+  loading,
+  error,
+  fetchMembers,
+  inviteMember,
+  updateRole,
+  removeMember,
+  userId,
+}) {
+  // State/modal untuk UI saja
   const [selectedMember, setSelectedMember] = useState(null);
   const [anchorPos, setAnchorPos] = useState(null);
   const [openInvite, setOpenInvite] = useState(false);
   const [inviteAnchor, setInviteAnchor] = useState(null);
   const realtimeChannel = useRef(null);
-  const {
-    loading,
-    error,
-    members,
-    fetchMembers,
-    inviteMember,
-    updateRole,
-    removeMember,
-  } = useBoardInvite(boardId);
-  console.log("BoardInvite members:", members);
+
   useEffect(() => {
     fetchMembers();
     // eslint-disable-next-line
   }, [boardId, members.length]);
-  console.log(email);
+
   // Realtime subscription: update members jika ada perubahan di board_members
   useEffect(() => {
     // Unsubscribe channel lama jika ada
@@ -70,28 +69,6 @@ export default function BoardInvite({ boardId, canEdit }) {
       }
     };
   }, [boardId, fetchMembers, userId]);
-
-  useEffect(() => {
-    // Ambil user id dari Supabase
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (data?.user) setUserId(data.user.id);
-    };
-    getUser();
-  }, []);
-
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    if (!email) return toast.error("Email wajib diisi");
-    const ok = await inviteMember(email, role);
-    if (ok) {
-      toast.success("Undangan dikirim!");
-      setEmail("");
-      fetchMembers();
-    } else if (error) {
-      toast.error(error);
-    }
-  };
 
   return (
     <>

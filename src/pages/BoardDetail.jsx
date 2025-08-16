@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import toast from "react-hot-toast";
 import BoardInvite from "../components/BoardInvite";
 import Column from "../components/Column";
+import useBoardInvite from "../hooks/useBoardInvite";
 
 // Daftar warna kolom (bukan abu-abu)
 const columnColorList = [
@@ -53,53 +54,24 @@ export default function BoardDetail() {
   const [addingColumn, setAddingColumn] = useState(false);
   const [addingTask, setAddingTask] = useState({}); // { [columnId]: false }
   const [role, setRole] = useState("");
-  // Drag & drop state
+  // Untuk mencegah spam toast saat drag
+  const [dragToastShown, setDragToastShown] = useState(false);
+  const [userId, setUserId] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null); // { task, fromColumnId }
-  // Handler untuk drag & drop task antar kolom
+  const {
+    members,
+    loading: membersLoading,
+    error: membersError,
+    fetchMembers,
+    inviteMember,
+    updateRole,
+    removeMember,
+  } = useBoardInvite(id);
   const canEdit = role === "owner" || role === "editor";
   const isViewer = role === "viewer";
 
   // Subscribe perubahan role user di board_members agar canEdit/isViewer selalu update
-  useEffect(() => {
-    let channel;
-    let mounted = true;
-    let userId;
-    const subscribeRole = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      userId = userData?.user?.id;
-      if (!userId) return;
-      channel = supabase
-        .channel("realtime:role-" + id + "-" + userId)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "board_members",
-            filter: `board_id=eq.${id},user_id=eq.${userId}`,
-          },
-          async (payload) => {
-            // Ambil role terbaru dari DB
-            const { data: member } = await supabase
-              .from("board_members")
-              .select("role")
-              .eq("board_id", id)
-              .eq("user_id", userId)
-              .single();
-            if (mounted) {
-              if (member) setRole(member.role);
-            }
-          }
-        )
-        .subscribe();
-    };
-    subscribeRole();
-    return () => {
-      mounted = false;
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [id]);
-
+  console.log(role);
   // Reset state saat role berubah agar UI/validasi langsung update
   useEffect(() => {
     setNewColumn("");
@@ -108,9 +80,14 @@ export default function BoardDetail() {
     setAddingColumn(false);
     setAddingTask({});
   }, [role]);
-  // Untuk mencegah spam toast saat drag
-  const [dragToastShown, setDragToastShown] = useState(false);
 
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) setUserId(data.user.id);
+    };
+    getUser();
+  }, []);
   // Realtime channel ref
   const realtimeChannel = useRef(null);
 
@@ -174,20 +151,6 @@ export default function BoardDetail() {
       .eq("id", taskId);
     if (delError) setError(delError.message);
     fetchData();
-  };
-
-  // Mendapatkan style kolom berdasarkan colorIndex atau urutan
-  const getColumnStyle = (col, idx) => {
-    // Jika ada colorIndex, pakai itu
-    if (
-      col.colorIndex !== undefined &&
-      col.colorIndex !== null &&
-      columnColorList[col.colorIndex]
-    ) {
-      return columnColorList[col.colorIndex];
-    }
-    // Jika tidak ada, pakai urutan index map
-    return columnColorList[idx % columnColorList.length];
   };
 
   // loading hanya untuk load pertama kali
@@ -327,6 +290,27 @@ export default function BoardDetail() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "board_members" },
+        (payload) => {
+          fetchMembers();
+          console.log("Realtime event board_members:", payload);
+          // Jika role user yang login berubah, update state role
+          if (
+            payload.new &&
+            userId &&
+            payload.new.user_id === userId &&
+            payload.new.board_id == id
+          ) {
+            setRole(payload.new.role);
+            console.log("Role updated:", payload.new.role);
+            toast.success(
+              `Role Anda di board ini berubah menjadi: ${payload.new.role}`
+            );
+          }
+        }
+      )
       .subscribe((status) => {
         console.log("Channel status:", status);
       });
@@ -338,7 +322,7 @@ export default function BoardDetail() {
         supabase.removeChannel(realtimeChannel.current);
       }
     };
-  }, [id, columns.length]); // Tambahkan columns.length untuk trigger ulang saat ada perubahan struktur kolom
+  }, [id, columns.length, userId]); // Tambahkan columns.length untuk trigger ulang saat ada perubahan struktur kolom
 
   const handleAddColumn = async (e) => {
     e.preventDefault();
@@ -458,7 +442,18 @@ export default function BoardDetail() {
 
   return (
     <div className="py-2 px-4 bg-gray-900 min-h-screen overflow-hidden">
-      <BoardInvite boardId={board.id} canEdit={canEdit} />
+      <BoardInvite
+        boardId={board.id}
+        canEdit={canEdit}
+        members={members}
+        loading={membersLoading}
+        error={membersError}
+        fetchMembers={fetchMembers}
+        inviteMember={inviteMember}
+        updateRole={updateRole}
+        removeMember={removeMember}
+        userId={userId}
+      />
       <div className=" w-full flex flex-col items-center justify-center">
         <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-yellow-400 via-pink-400 mb-8">
           {board.name}
