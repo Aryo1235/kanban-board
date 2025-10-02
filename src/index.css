@@ -3,3 +3,40 @@
 body {
   background-color: #0f172a; /* warna bg-gray-900 Tailwind */
 }
+
+/* Global dragging cursor */
+body.dragging, body.dragging * {
+  cursor: grabbing !important;
+}
+
+/* Optional subtle pulse for urgent deadlines (today & overdue) */
+@keyframes pulse-deadline {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+.deadline-badge-urgent {
+  animation: pulse-deadline 2.4s ease-in-out infinite;
+}
+
+/* Force long continuous words/URLs to wrap within cards */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: break-word;
+}
+
+/* For legacy browsers fallback */
+.preline-break-anywhere {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Clamp 5 lines utility for task descriptions */
+.clamped-5-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

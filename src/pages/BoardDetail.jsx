@@ -50,7 +50,8 @@ export default function BoardDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [newColumn, setNewColumn] = useState("");
-  const [newTask, setNewTask] = useState({}); // { [columnId]: "" }
+  // newTask sekarang menyimpan object per kolom: { [columnId]: { title: string, content: string } }
+  const [newTask, setNewTask] = useState({});
   const [addingColumn, setAddingColumn] = useState(false);
   const [addingTask, setAddingTask] = useState({}); // { [columnId]: false }
   const [role, setRole] = useState("");
@@ -58,6 +59,34 @@ export default function BoardDetail() {
   const [dragToastShown, setDragToastShown] = useState(false);
   const [userId, setUserId] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null); // { task, fromColumnId }
+  // Metadata drag: originIndex, originColumn, dropSucceeded
+  const dragMetaRef = useRef({ originColumnId: null, originIndex: null, dropSucceeded: false });
+
+  // Optimistic update helpers for editing
+  const handleUpdateTask = async (taskId, patch) => {
+    if (!canEdit) return false;
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
+    const { error: updErr } = await supabase.from('tasks').update(patch).eq('id', taskId);
+    if (updErr) {
+      toast.error(updErr.message || 'Gagal update task');
+      // refetch fallback
+      fetchData();
+      return false;
+    }
+    return true; // realtime akan sync final row
+  };
+
+  const handleUpdateColumn = async (columnId, patch) => {
+    if (!canEdit) return false;
+    setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, ...patch } : c)));
+    const { error: updErr } = await supabase.from('columns').update(patch).eq('id', columnId);
+    if (updErr) {
+      toast.error(updErr.message || 'Gagal update kolom');
+      fetchData();
+      return false;
+    }
+    return true;
+  };
   const {
     members,
     loading: membersLoading,
@@ -75,7 +104,7 @@ export default function BoardDetail() {
   // Reset state saat role berubah agar UI/validasi langsung update
   useEffect(() => {
     setNewColumn("");
-    setNewTask({});
+  setNewTask({});
     setDraggedTask(null);
     setAddingColumn(false);
     setAddingTask({});
@@ -99,6 +128,16 @@ export default function BoardDetail() {
     }
     setDraggedTask({ task, fromColumnId });
     setDragToastShown(false);
+    // Simpan origin info
+    const originTasks = tasks
+      .filter((t) => t.column_id === fromColumnId)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+    const originIndex = originTasks.findIndex((t) => t.id === task.id);
+    dragMetaRef.current = {
+      originColumnId: fromColumnId,
+      originIndex,
+      dropSucceeded: false,
+    };
   };
 
   const handleDragOverTask = (e) => {
@@ -109,33 +148,219 @@ export default function BoardDetail() {
     e.preventDefault();
   };
 
-  const handleDropTask = async (e, toColumnId) => {
+  const handleDropTask = async (e, toColumnId, dropIndex = null) => {
     if (!canEdit) {
-      // Tidak perlu toast di drop agar tidak spam
-      setDragToastShown(false); // reset agar drag berikutnya bisa munculkan toast lagi
+      setDragToastShown(false);
       return;
     }
     e.preventDefault();
     if (!draggedTask) return;
     const { task, fromColumnId } = draggedTask;
-    if (fromColumnId === toColumnId) return setDraggedTask(null);
     setError("");
-    // Hitung posisi baru di kolom tujuan
-    const colTasks = tasks.filter((t) => t.column_id === toColumnId);
-    const newPosition =
-      colTasks.length > 0
-        ? Math.max(...colTasks.map((t) => t.position || 0)) + 1
-        : 1;
-    // Update task di Supabase
-    const { error: updateError } = await supabase
-      .from("tasks")
-      .update({ column_id: toColumnId, position: newPosition })
-      .eq("id", task.id);
-    if (updateError) setError(updateError.message);
+    // Tandai drop valid (hanya fungsi ini yang dianggap valid drop zone)
+    dragMetaRef.current.dropSucceeded = true;
+
+    // Ambil tasks di kolom tujuan dalam urutan sekarang (integer only)
+    const colTasks = tasks
+      .filter((t) => t.column_id === toColumnId)
+      .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    // CASE 1: Reorder dalam kolom yang sama
+    if (fromColumnId === toColumnId && dropIndex !== null) {
+      const currentIndex = colTasks.findIndex((t) => t.id === task.id);
+      if (currentIndex === -1) return;
+
+      // Jika tidak ada perubahan posisi
+      if (currentIndex === dropIndex || (currentIndex === dropIndex - 1 && dropIndex > 0)) {
+        setDraggedTask(null);
+        return;
+      }
+
+      // Buat array baru tanpa task yang dipindah
+      const reordered = [...colTasks];
+      const [moved] = reordered.splice(currentIndex, 1);
+      let insertionIndex = dropIndex;
+      if (currentIndex < dropIndex) insertionIndex = dropIndex - 1;
+      if (insertionIndex < 0) insertionIndex = 0;
+      if (insertionIndex > reordered.length) insertionIndex = reordered.length;
+      reordered.splice(insertionIndex, 0, moved);
+
+      // Hitung posisi baru & siapkan update hanya untuk yang berubah
+      const updates = [];
+      const newPosMap = {};
+      reordered.forEach((t, i) => {
+        const newPos = i + 1;
+        newPosMap[t.id] = newPos;
+        if ((t.position || 0) !== newPos) {
+          updates.push({ id: t.id, newPos });
+        }
+      });
+
+      // Optimistic UI: update state lokal sebelum realtime datang
+      if (updates.length > 0) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            newPosMap[t.id]
+              ? { ...t, position: newPosMap[t.id] }
+              : t
+          )
+        );
+      }
+
+      console.log("Reorder debug:", {
+        fromIndex: currentIndex,
+        toIndex: insertionIndex,
+        dropIndex,
+        originalLength: colTasks.length,
+        updates,
+      });
+
+      // Jalankan update hanya untuk task yang posisinya berubah
+      for (const u of updates) {
+        const { error: updErr } = await supabase
+          .from("tasks")
+          .update({ position: u.newPos })
+          .eq("id", u.id);
+        if (updErr) {
+          setError(updErr.message);
+          console.error("Update position failed", u, updErr.message);
+          break;
+        } else {
+          console.log("Updated position", u);
+        }
+      }
+    }
+    // CASE 2: Pindah antar kolom
+    else if (fromColumnId !== toColumnId) {
+      // Reorder di kolom tujuan sesuai dropIndex (kalau null -> taruh di bawah)
+      const destTasks = colTasks; // sudah tasks di kolom tujuan (sorted)
+      let insertionIndex = destTasks.length; // default append
+      if (dropIndex !== null && dropIndex !== undefined) {
+        insertionIndex = Math.min(Math.max(dropIndex, 0), destTasks.length);
+      }
+
+      // Buat array baru dengan task yang dipindah disisipkan
+      const destReordered = [...destTasks];
+      const movedClone = { ...task, column_id: toColumnId }; // clone untuk optimistic
+      destReordered.splice(insertionIndex, 0, movedClone);
+
+      // Normalisasi posisi tujuan
+      const destNewPosMap = {};
+      const destUpdates = [];
+      destReordered.forEach((t, i) => {
+        const newPos = i + 1;
+        destNewPosMap[t.id] = newPos;
+        if ((t.position || 0) !== newPos || t.id === task.id || t.column_id !== toColumnId) {
+          // termasuk moved task yang column_id berubah
+          destUpdates.push({ id: t.id, position: newPos, column_id: toColumnId });
+        }
+      });
+
+      // Normalisasi posisi kolom asal (opsional untuk hilangkan gap)
+      const originTasks = tasks
+        .filter((t) => t.column_id === fromColumnId && t.id !== task.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      const originUpdates = [];
+      const originNewPosMap = {};
+      originTasks.forEach((t, i) => {
+        const newPos = i + 1;
+        originNewPosMap[t.id] = newPos;
+        if ((t.position || 0) !== newPos) {
+          originUpdates.push({ id: t.id, position: newPos });
+        }
+      });
+
+      // Optimistic UI update
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id === task.id) {
+            return { ...t, column_id: toColumnId, position: destNewPosMap[t.id] };
+          }
+          if (destNewPosMap[t.id]) {
+            return { ...t, position: destNewPosMap[t.id] };
+          }
+          if (originNewPosMap[t.id]) {
+            return { ...t, position: originNewPosMap[t.id] };
+          }
+          return t;
+        })
+      );
+
+      // Kirim update ke DB (moved task dulu, lalu lainnya). Hindari upsert untuk menjaga content.
+      // Moved task
+      const movedNewPos = destNewPosMap[task.id];
+      const { error: movedErr } = await supabase
+        .from("tasks")
+        .update({ column_id: toColumnId, position: movedNewPos })
+        .eq("id", task.id);
+      if (movedErr) {
+        setError(movedErr.message);
+        console.error("Move task cross-column failed", movedErr.message);
+      }
+
+      // Destination other tasks
+      for (const u of destUpdates) {
+        if (u.id === task.id) continue; // sudah diupdate
+        const { error: updErr } = await supabase
+          .from("tasks")
+          .update({ position: u.position })
+          .eq("id", u.id);
+        if (updErr) {
+          console.error("Update dest position failed", u, updErr.message);
+          break;
+        }
+      }
+
+      // Origin tasks (reindex)
+      for (const u of originUpdates) {
+        const { error: updErr } = await supabase
+          .from("tasks")
+          .update({ position: u.position })
+          .eq("id", u.id);
+        if (updErr) {
+          console.error("Update origin position failed", u, updErr.message);
+          break;
+        }
+      }
+    }
+
     setDraggedTask(null);
     setDragToastShown(false);
-    fetchData();
+    // Realtime subscription akan update UI; fallback fetch jika perlu
+    // fetchData();
   };
+
+  // Global listeners: batal drag jika Esc atau drop di luar zona valid
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && draggedTask) {
+        // Batalkan drag manual
+        dragMetaRef.current.dropSucceeded = false; // paksa revert
+        setDraggedTask(null);
+      }
+    };
+    const handleDragEndGlobal = () => {
+      if (draggedTask) {
+        // Jika belum sukses (drop di area non-drop-zone), revert (state kita belum berubah anyway)
+        if (!dragMetaRef.current.dropSucceeded) {
+          // Tidak ada perubahan DB karena kita hanya commit saat drop valid.
+        }
+        // Bersihkan
+        dragMetaRef.current = { originColumnId: null, originIndex: null, dropSucceeded: false };
+        setDraggedTask(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('dragend', handleDragEndGlobal);
+    window.addEventListener('drop', handleDragEndGlobal);
+    window.addEventListener('mouseup', handleDragEndGlobal); // fallback kalau dragend tidak fire (browser edge cases)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('dragend', handleDragEndGlobal);
+      window.removeEventListener('drop', handleDragEndGlobal);
+      window.removeEventListener('mouseup', handleDragEndGlobal);
+    };
+  }, [draggedTask]);
 
   // Handler hapus task
   const handleDeleteTask = async (taskId) => {
@@ -379,9 +604,11 @@ export default function BoardDetail() {
     e.preventDefault();
     if (!canEdit) {
       toast.error("Hanya owner/editor yang bisa menambah task.");
-      return;
+      return false;
     }
-    if (!newTask[columnId] || !newTask[columnId].trim()) return;
+  const draft = newTask[columnId] || { title: "", content: "", deadline: "" };
+    // Validasi: minimal harus ada title
+    if (!draft.title.trim()) return false;
     setAddingTask((t) => ({ ...t, [columnId]: true }));
     setError("");
     const colTasks = tasks.filter((t) => t.column_id === columnId);
@@ -391,22 +618,25 @@ export default function BoardDetail() {
         : 0;
     const { error: insertError } = await supabase.from("tasks").insert([
       {
-        content: newTask[columnId],
+        title: draft.title.trim(),
+        content: draft.content?.trim() || "",
         column_id: columnId,
         position: maxPos + 1,
+        deadline: draft.deadline || null,
       },
     ]);
     if (insertError) {
       setError(insertError.message);
       console.error("Insert error:", insertError);
-      return;
+      setAddingTask((t) => ({ ...t, [columnId]: false }));
+      return false;
     }
 
     // DEBUG: Cek data hasil insert FE dan relasinya
     const { data: insertedTask, error: fetchInsertedError } = await supabase
       .from("tasks")
       .select("*, columns(*, boards(*))")
-      .eq("content", newTask[columnId])
+  .eq("title", draft.title.trim())
       .order("id", { ascending: false })
       .limit(1)
       .single();
@@ -424,9 +654,10 @@ export default function BoardDetail() {
       }
     }
 
-    setNewTask((t) => ({ ...t, [columnId]: "" }));
+  setNewTask((t) => ({ ...t, [columnId]: { title: "", content: "", deadline: "" } }));
     setAddingTask((t) => ({ ...t, [columnId]: false }));
     fetchData();
+    return true;
   };
 
   if (loading) {
@@ -501,6 +732,8 @@ export default function BoardDetail() {
               handleDeleteTask={handleDeleteTask}
               handleDeleteColumn={handleDeleteColumn}
               handleAddTask={handleAddTask}
+              handleUpdateTask={handleUpdateTask}
+              handleUpdateColumn={handleUpdateColumn}
               newTask={newTask}
               setNewTask={setNewTask}
               addingTask={addingTask}
