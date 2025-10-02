@@ -4,9 +4,9 @@ export default function Footer() {
   return (
     <div>
       <footer className="bg-gray-800 text-gray-400 pt-8">
-        <section className="container mx-auto max-w-[1300px] flex flex-col md:flex-row justify-between gap-8 mb-8">
+        <section className="container mx-auto p-4 flex flex-col md:flex-row justify-between gap-8 mb-8">
           {/* Kiri: Logo, judul, deskripsi, sosmed */}
-          <div className="flex-1  min-w-[350px]">
+          <div className="flex-1  min-w-[300px]">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl font-bold bg-green-600 px-3 text-white py-1 rounded-md">
                 B
