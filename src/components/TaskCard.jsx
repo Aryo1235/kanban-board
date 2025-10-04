@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { FiTrash2, FiEdit2, FiCalendar, FiX } from 'react-icons/fi';
-import { getDeadlineStatus } from '../lib/deadline';
+import React, { useState } from "react";
+import { FiTrash2, FiEdit2, FiCalendar, FiX } from "react-icons/fi";
+import { getDeadlineStatus } from "../lib/deadline";
 
 /**
  * TaskCard component - handles individual task display and quick actions
@@ -20,7 +20,7 @@ export default function TaskCard({
   toggleDesc,
 }) {
   const [quickDeadlineTaskId, setQuickDeadlineTaskId] = useState(null);
-  const [quickDeadlineValue, setQuickDeadlineValue] = useState('');
+  const [quickDeadlineValue, setQuickDeadlineValue] = useState("");
   const [quickSaving, setQuickSaving] = useState(false);
 
   const deadlineInfo = getDeadlineStatus(task.deadline);
@@ -29,34 +29,36 @@ export default function TaskCard({
   const handleQuickDeadlineSubmit = async (e) => {
     e.preventDefault();
     setQuickSaving(true);
-    const ok = await onUpdate(task.id, { deadline: quickDeadlineValue || null });
+    const ok = await onUpdate(task.id, {
+      deadline: quickDeadlineValue || null,
+    });
     setQuickSaving(false);
     if (ok) {
       setQuickDeadlineTaskId(null);
-      setQuickDeadlineValue('');
+      setQuickDeadlineValue("");
     }
   };
 
   const handleQuickDeadlineToggle = () => {
     if (quickDeadlineTaskId === task.id) {
       setQuickDeadlineTaskId(null);
-      setQuickDeadlineValue('');
+      setQuickDeadlineValue("");
     } else {
       setQuickDeadlineTaskId(task.id);
-      setQuickDeadlineValue(task.deadline || '');
+      setQuickDeadlineValue(task.deadline || "");
     }
   };
 
   const renderDescription = () => {
     if (!task.content) return null;
     const truncated = truncatedDesc[task.id] && !expandedDesc[task.id];
-    
+
     return (
       <>
         <span
           ref={makeMeasureRef(task.id)}
           className={`text-[11px] text-gray-300 whitespace-pre-line leading-snug break-anywhere block transition-all ${
-            truncated ? 'clamped-5-lines' : ''
+            truncated ? "clamped-5-lines" : ""
           }`}
         >
           {task.content}
@@ -67,7 +69,7 @@ export default function TaskCard({
             onClick={() => toggleDesc(task.id)}
             className="mt-1 text-[10px] font-medium text-sky-400 hover:text-sky-300 transition-colors"
           >
-            {expandedDesc[task.id] ? 'Sembunyikan' : 'Lihat selengkapnya'}
+            {expandedDesc[task.id] ? "Sembunyikan" : "Lihat selengkapnya"}
           </button>
         )}
       </>
@@ -79,11 +81,15 @@ export default function TaskCard({
       draggable={canEdit && !isEditing}
       onDragStart={() => canEdit && !isEditing && onDragStart(task)}
       className={`bg-gray-700 text-white p-3 rounded-md shadow-sm mb-1 transition-all duration-150 group
-        ${canEdit && !isEditing ? 'cursor-move hover:bg-gray-600' : 'cursor-default'}
-        ${isDraggingCard ? 'opacity-50 scale-[0.97]' : 'opacity-100'}`}
+        ${
+          canEdit && !isEditing
+            ? "cursor-move hover:bg-gray-600"
+            : "cursor-default"
+        }
+        ${isDraggingCard ? "opacity-50 scale-[0.97]" : "opacity-100"}`}
       style={{
-        userSelect: 'none',
-        transform: isDraggingCard ? 'scale(0.97)' : 'none',
+        userSelect: "none",
+        transform: isDraggingCard ? "scale(0.97)" : "none",
       }}
     >
       <div className="flex flex-col gap-2">
@@ -117,7 +123,7 @@ export default function TaskCard({
               <button
                 type="button"
                 className="text-[10px] text-gray-300 hover:text-red-300"
-                onClick={() => setQuickDeadlineValue('')}
+                onClick={() => setQuickDeadlineValue("")}
               >
                 Clear
               </button>
@@ -127,7 +133,7 @@ export default function TaskCard({
               disabled={quickSaving}
               className="ml-auto text-[11px] font-semibold bg-lime-600 hover:bg-lime-700 disabled:opacity-50 px-3 py-1 rounded text-white"
             >
-              {quickSaving ? '...' : 'Save'}
+              {quickSaving ? "..." : "Save"}
             </button>
           </form>
         )}
@@ -138,14 +144,18 @@ export default function TaskCard({
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {deadlineInfo && (
                 <span
-                  className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium tracking-wide ${deadlineInfo.color} ${
-                    ['today', 'overdue'].includes(deadlineInfo.severity) ? 'deadline-badge-urgent' : ''
+                  className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium tracking-wide ${
+                    deadlineInfo.color
+                  } ${
+                    ["today", "overdue"].includes(deadlineInfo.severity)
+                      ? "deadline-badge-urgent"
+                      : ""
                   }`}
                 >
                   {deadlineInfo.label}
                 </span>
               )}
-              {deadlineInfo?.severity === 'overdue' && (
+              {deadlineInfo?.severity === "overdue" && (
                 <span className="text-[10px] text-red-400 italic truncate">
                   Lewat deadline
                 </span>
@@ -157,7 +167,7 @@ export default function TaskCard({
                 <button
                   onClick={handleQuickDeadlineToggle}
                   className="px-2 py-1 rounded bg-gray-600/40 hover:bg-gray-600/70 text-amber-300 hover:text-amber-200 text-[11px] flex items-center gap-1"
-                  title={task.deadline ? 'Ubah deadline' : 'Set deadline'}
+                  title={task.deadline ? "Ubah deadline" : "Set deadline"}
                   type="button"
                 >
                   {quickDeadlineTaskId === task.id ? (

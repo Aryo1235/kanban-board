@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiTrash2, FiEdit2, FiX, FiSave, FiPlus } from 'react-icons/fi';
+import { FiTrash2, FiEdit2, FiX, FiSave, FiPlus } from "react-icons/fi";
 import TaskList from "./TaskList";
 
 export default function Column({
@@ -108,8 +108,10 @@ export default function Column({
 
   return (
     <div
-      className={`flex-shrink-0 w-[350px] p-3 rounded-lg border-t-4 min-h-40 transition-colors ${style.border} ${
-        isHighlight ? 'bg-gray-800/70 ring-2 ring-sky-500/40' : 'bg-gray-800'
+      className={`flex-shrink-0 w-[350px] p-3 rounded-lg border-t-4 min-h-40 transition-colors ${
+        style.border
+      } ${
+        isHighlight ? "bg-gray-800/70 ring-2 ring-sky-500/40" : "bg-gray-800"
       }`}
       onDragOver={handleDragOverTask}
       onDragEnter={handleDragEnterColumn}
@@ -117,7 +119,9 @@ export default function Column({
       // Tidak ada onDrop di container agar hanya drop zone spesifik yang valid
       onDragEnd={handleDragEndColumn}
     >
-      <div className={`p-3 pr-2 text-white font-bold text-sm mb-4 rounded-t-md flex items-center gap-2 ${style.header}`}>
+      <div
+        className={`p-3 pr-2 text-white font-bold text-sm mb-4 rounded-t-md flex items-center gap-2 ${style.header}`}
+      >
         <span className="bg-gray-900/40 rounded-full px-2 py-0.5 text-[11px] font-medium">
           {tasks.length}
         </span>
@@ -126,7 +130,9 @@ export default function Column({
             onSubmit={async (e) => {
               e.preventDefault();
               if (!columnNameDraft.trim()) return;
-              const ok = await handleUpdateColumn(col.id, { name: columnNameDraft.trim() });
+              const ok = await handleUpdateColumn(col.id, {
+                name: columnNameDraft.trim(),
+              });
               if (ok) setEditingColumn(false);
             }}
             className="flex items-center gap-2 flex-1"
@@ -137,13 +143,17 @@ export default function Column({
               onChange={(e) => setColumnNameDraft(e.target.value)}
               autoFocus
               onKeyDown={(e) => {
-                if (e.key === 'Escape') {
+                if (e.key === "Escape") {
                   setEditingColumn(false);
                   setColumnNameDraft(col.name);
                 }
               }}
             />
-            <button type="submit" className="p-1 rounded bg-lime-500/80 hover:bg-lime-500 text-white" title="Simpan">
+            <button
+              type="submit"
+              className="p-1 rounded bg-lime-500/80 hover:bg-lime-500 text-white"
+              title="Simpan"
+            >
               <FiSave className="w-4 h-4" />
             </button>
             <button
@@ -160,7 +170,12 @@ export default function Column({
           </form>
         ) : (
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="truncate text-sm font-semibold select-none" title={col.name}>{col.name}</span>
+            <span
+              className="truncate text-sm font-semibold select-none"
+              title={col.name}
+            >
+              {col.name}
+            </span>
             {canEdit && (
               <div className="flex items-center gap-1 ml-auto opacity-80 hover:opacity-100 transition-opacity">
                 <button
@@ -174,8 +189,13 @@ export default function Column({
                 <button
                   type="button"
                   onClick={() => {
-                    if (!canEdit) { toast.error('Tidak boleh'); return; }
-                    if (window.confirm('Hapus kolom beserta task di dalamnya?')) {
+                    if (!canEdit) {
+                      toast.error("Tidak boleh");
+                      return;
+                    }
+                    if (
+                      window.confirm("Hapus kolom beserta task di dalamnya?")
+                    ) {
                       handleDeleteColumn(col.id);
                     }
                   }}
@@ -203,26 +223,43 @@ export default function Column({
           className="mb-3 flex flex-col gap-2"
         >
           {(() => {
-            const data = newTask[col.id] || { title: '', content: '', deadline: '' };
+            const data = newTask[col.id] || {
+              title: "",
+              content: "",
+              deadline: "",
+            };
             const titleEmpty = submitAttempt && !data.title.trim();
             return (
               <>
                 <input
                   type="text"
-                  className={`p-2 rounded bg-gray-700 text-white border w-full text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-lime-400 transition-colors ${titleEmpty ? 'border-red-500 focus:ring-red-400' : 'border-gray-600'}`}
+                  className={`p-2 rounded bg-gray-700 text-white border w-full text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-lime-400 transition-colors ${
+                    titleEmpty
+                      ? "border-red-500 focus:ring-red-400"
+                      : "border-gray-600"
+                  }`}
                   placeholder="Judul task (wajib)"
                   value={data.title}
                   onChange={(e) =>
                     setNewTask((t) => ({
                       ...t,
-                      [col.id]: { ...(t[col.id] || { title: '', content: '', deadline: '' }), title: e.target.value },
+                      [col.id]: {
+                        ...(t[col.id] || {
+                          title: "",
+                          content: "",
+                          deadline: "",
+                        }),
+                        title: e.target.value,
+                      },
                     }))
                   }
                   disabled={addingTask[col.id]}
                   autoFocus
                 />
                 {titleEmpty && (
-                  <span className="text-[11px] text-red-400 -mt-1">Judul wajib diisi.</span>
+                  <span className="text-[11px] text-red-400 -mt-1">
+                    Judul wajib diisi.
+                  </span>
                 )}
                 <textarea
                   className="p-2 rounded bg-gray-700 text-white border border-gray-600 w-full resize-none text-xs leading-snug focus:outline-none focus:ring-1 focus:ring-lime-400"
@@ -232,7 +269,14 @@ export default function Column({
                   onChange={(e) =>
                     setNewTask((t) => ({
                       ...t,
-                      [col.id]: { ...(t[col.id] || { title: '', content: '', deadline: '' }), content: e.target.value },
+                      [col.id]: {
+                        ...(t[col.id] || {
+                          title: "",
+                          content: "",
+                          deadline: "",
+                        }),
+                        content: e.target.value,
+                      },
                     }))
                   }
                   disabled={addingTask[col.id]}
@@ -241,11 +285,18 @@ export default function Column({
                   <input
                     type="date"
                     className="p-2 rounded bg-gray-700 text-white border border-gray-600 text-xs flex-1 focus:outline-none focus:ring-1 focus:ring-lime-400"
-                    value={data.deadline || ''}
+                    value={data.deadline || ""}
                     onChange={(e) =>
                       setNewTask((t) => ({
                         ...t,
-                        [col.id]: { ...(t[col.id] || { title: '', content: '', deadline: '' }), deadline: e.target.value },
+                        [col.id]: {
+                          ...(t[col.id] || {
+                            title: "",
+                            content: "",
+                            deadline: "",
+                          }),
+                          deadline: e.target.value,
+                        },
                       }))
                     }
                     disabled={addingTask[col.id]}
@@ -254,9 +305,16 @@ export default function Column({
                     <button
                       type="button"
                       className="text-xs text-gray-300 hover:text-red-300"
-                      onClick={() => setNewTask((t) => ({ ...t, [col.id]: { ...(t[col.id] || {}), deadline: '' } }))}
+                      onClick={() =>
+                        setNewTask((t) => ({
+                          ...t,
+                          [col.id]: { ...(t[col.id] || {}), deadline: "" },
+                        }))
+                      }
                       disabled={addingTask[col.id]}
-                    >Reset</button>
+                    >
+                      Reset
+                    </button>
                   )}
                 </div>
               </>
@@ -269,7 +327,10 @@ export default function Column({
               onClick={() => {
                 setShowAddForm(false);
                 setSubmitAttempt(false);
-                setNewTask((t) => ({ ...t, [col.id]: { title: '', content: '', deadline: '' } }));
+                setNewTask((t) => ({
+                  ...t,
+                  [col.id]: { title: "", content: "", deadline: "" },
+                }));
               }}
               disabled={addingTask[col.id]}
             >
@@ -298,7 +359,10 @@ export default function Column({
               toast.error("Hanya owner/editor yang bisa menambah task.");
               return;
             }
-            setNewTask((t) => ({ ...t, [col.id]: t[col.id] || { title: '', content: '', deadline: '' } }));
+            setNewTask((t) => ({
+              ...t,
+              [col.id]: t[col.id] || { title: "", content: "", deadline: "" },
+            }));
             setShowAddForm(true);
           }}
         >
