@@ -2,11 +2,16 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { MdOutlineViewKanban, MdHomeFilled } from "react-icons/md";
+import NotificationDropdown from "../components/NotificationDropdown";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function Layout() {
   const [profile, setProfile] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
+
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } =
+    useNotifications();
 
   useEffect(() => {
     let subscription;
@@ -87,37 +92,46 @@ export default function Layout() {
               Welcome to your Kanban Board
             </p>
           </div>
-          <div
-            className="relative py-10"
-            onMouseEnter={() => setShowProfileMenu(true)}
-            onMouseLeave={() => setShowProfileMenu(false)}
-          >
-            {profile && (
-              <>
-                <span className="text-sm text-gray-400 cursor-pointer">
-                  Welcome, {profile.username || profile.email}
-                </span>
-                {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded shadow-lg border border-gray-700 z-50 py-2">
-                    <button
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
-                      onClick={() => navigate("/profile")}
-                    >
-                      Lihat & Edit Profile
-                    </button>
-                    <button
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
-                      onClick={async () => {
-                        await supabase.auth.signOut();
-                        navigate("/");
-                      }}
-                    >
-                      Log out
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+          <div className="flex items-center gap-4">
+            <NotificationDropdown
+              notifications={notifications}
+              unreadCount={unreadCount}
+              loading={loading}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+            />
+            <div
+              className="relative py-10"
+              onMouseEnter={() => setShowProfileMenu(true)}
+              onMouseLeave={() => setShowProfileMenu(false)}
+            >
+              {profile && (
+                <>
+                  <span className="text-sm text-gray-400 cursor-pointer">
+                    Welcome, {profile.username || profile.email}
+                  </span>
+                  {showProfileMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded shadow-lg border border-gray-700 z-50 py-2">
+                      <button
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-700 text-white"
+                        onClick={() => navigate("/profile")}
+                      >
+                        Lihat & Edit Profile
+                      </button>
+                      <button
+                        className="block w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400"
+                        onClick={async () => {
+                          await supabase.auth.signOut();
+                          navigate("/");
+                        }}
+                      >
+                        Log out
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </header>
         <main className="container mx-auto px-4 py-4 overflow-x-hidden">

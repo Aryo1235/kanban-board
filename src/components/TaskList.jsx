@@ -27,6 +27,10 @@ export default function TaskList({
   handleDeleteTask,
   handleDropOnTask,
   handleUpdateTask,
+  // New props for assignment
+  boardMembers,
+  onAssignTask,
+  currentUserId,
 }) {
   // Use custom hooks for better organization
   const { expandedDesc, truncatedDesc, toggleDesc, makeMeasureRef } =
@@ -142,6 +146,10 @@ export default function TaskList({
                 truncatedDesc={truncatedDesc}
                 makeMeasureRef={makeMeasureRef}
                 toggleDesc={toggleDesc}
+                // New props for assignment
+                boardMembers={boardMembers}
+                onAssignTask={onAssignTask}
+                currentUserId={currentUserId}
               />
             )}
             {renderDropZone(i + 1)}

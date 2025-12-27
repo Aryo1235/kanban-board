@@ -9,6 +9,8 @@ import { columnColorList } from "../lib/constant/columnColors";
 import { useBoardData } from "../hooks/useBoardData";
 import { useBoardRealtime } from "../hooks/useBoardRealtime";
 import { useTaskDrag } from "../hooks/useTaskDrag";
+import { useTaskAssignment } from "../hooks/useTaskAssignment";
+import { useDueDateReminders } from "../hooks/useDueDateReminders";
 
 export default function BoardDetail() {
   const { id } = useParams();
@@ -39,7 +41,17 @@ export default function BoardDetail() {
     inviteMember,
     updateRole,
     removeMember,
+    clearError,
   } = useBoardInvite(id);
+
+  const {
+    boardMembers,
+    loading: assignmentLoading,
+    assignTask,
+  } = useTaskAssignment(id);
+
+  // Enable due date reminders
+  useDueDateReminders(id);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -77,6 +89,42 @@ export default function BoardDetail() {
     setNewColumn("");
     setNewTask({});
   }, [role]);
+
+  const handleAssignTask = async (taskId, assignToUserId, assignedByUserId) => {
+    const success = await assignTask(taskId, assignToUserId, assignedByUserId);
+    if (success) {
+      // Update local state
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                assigned_to: assignToUserId,
+                assigned_at: assignToUserId ? new Date().toISOString() : null,
+                assigned_by: assignToUserId ? assignedByUserId : null,
+              }
+            : t
+        )
+      );
+
+      const assignedUser = boardMembers.find(
+        (m) => m.user_id === assignToUserId
+      );
+      const action = assignToUserId ? "ditugaskan kepada" : "unassign dari";
+      const userName =
+        assignedUser?.profiles?.full_name ||
+        assignedUser?.profiles?.email ||
+        "user";
+
+      toast.success(
+        assignToUserId
+          ? `Task ${action} ${userName}`
+          : "Assignment task dihapus"
+      );
+    } else {
+      toast.error("Gagal mengubah assignment task");
+    }
+  };
 
   const handleUpdateTask = async (taskId, patch) => {
     if (!canEdit) return false;
@@ -170,7 +218,12 @@ export default function BoardDetail() {
       toast.error("Hanya owner/editor yang bisa menambah task.");
       return false;
     }
-    const draft = newTask[columnId] || { title: "", content: "", deadline: "" };
+    const draft = newTask[columnId] || {
+      title: "",
+      content: "",
+      deadline: "",
+      assigned_to: null,
+    };
     if (!draft.title.trim()) return false;
     setAddingTask((t) => ({ ...t, [columnId]: true }));
     const colTasks = tasks.filter((t) => t.column_id === columnId);
@@ -184,12 +237,13 @@ export default function BoardDetail() {
         column_id: columnId,
         position: maxPos + 1,
         deadline: draft.deadline || null,
+        assigned_to: draft.assigned_to || null,
       },
     ]);
     if (insErr) toast.error(insErr.message);
     setNewTask((t) => ({
       ...t,
-      [columnId]: { title: "", content: "", deadline: "" },
+      [columnId]: { title: "", content: "", deadline: "", assigned_to: null },
     }));
     setAddingTask((t) => ({ ...t, [columnId]: false }));
     return true;
@@ -224,6 +278,7 @@ export default function BoardDetail() {
       <BoardInvite
         boardId={board.id}
         canEdit={canEdit}
+        isOwner={role === "owner"}
         members={members}
         loading={membersLoading}
         error={membersError}
@@ -231,6 +286,7 @@ export default function BoardDetail() {
         inviteMember={inviteMember}
         updateRole={updateRole}
         removeMember={removeMember}
+        clearError={clearError}
         userId={userId}
       />
       <div className="w-full flex flex-col items-center justify-center">
@@ -257,7 +313,7 @@ export default function BoardDetail() {
             Tambah Kolom
           </button>
         </form>
-        <div className="flex gap-6 overflow-x-auto pb-6 w-full justify-start items-start">
+        <div className="flex gap-6 overflow-x-auto overflow-y-hidden pb-10 w-full justify-start items-start">
           {columns.map((col, idx) => (
             <Column
               key={col.id}
@@ -280,6 +336,10 @@ export default function BoardDetail() {
               setNewTask={setNewTask}
               addingTask={addingTask}
               toast={toast}
+              // New props for assignment
+              boardMembers={boardMembers}
+              onAssignTask={handleAssignTask}
+              currentUserId={userId}
             />
           ))}
         </div>

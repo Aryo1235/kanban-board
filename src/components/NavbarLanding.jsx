@@ -32,14 +32,14 @@ export default function NavbarLanding() {
                 </Link>
               </li>
               <li className="relative group">
-                <Link to="/auth" className="px-1 relative">
+                <Link to="/login" className="px-1 relative">
                   Login
                   <span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-white transition-all duration-500 group-hover:w-full rounded "></span>
                 </Link>
               </li>
               <li className="relative group">
-                <Link to="/auth" className="px-1 relative">
-                  Demo
+                <Link to="/register" className="px-1 relative">
+                  Register
                   <span className="absolute left-0 -bottom-1 h-0.5 w-0 bg-white transition-all duration-500 group-hover:w-full rounded "></span>
                 </Link>
               </li>
@@ -47,7 +47,7 @@ export default function NavbarLanding() {
           </nav>
           <div>
             <Link
-              to="/auth"
+              to="/login"
               className="bg-green-600 font-semibold text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-500 "
             >
               Login Disini

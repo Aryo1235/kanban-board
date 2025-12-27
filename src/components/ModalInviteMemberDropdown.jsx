@@ -5,6 +5,7 @@ export default function ModalInviteMemberDropdown({
   anchorPos,
   onClose,
   canEdit,
+  isOwner,
   inviteMember,
   members,
   userId,
@@ -13,6 +14,7 @@ export default function ModalInviteMemberDropdown({
   fetchMembers,
   loading,
   error,
+  clearError,
 }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("viewer");
@@ -46,14 +48,18 @@ export default function ModalInviteMemberDropdown({
           &times;
         </button>
         <h3 className="text-lg font-bold text-white mb-2">Invite Member</h3>
-        {canEdit && (
+        {isOwner && (
           <form onSubmit={handleInvite} className="flex gap-2 mb-4">
             <input
               type="email"
               className="flex-1 p-2 rounded bg-gray-700 text-white"
               placeholder="Email user"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                // Clear error when user starts typing
+                if (error && clearError) clearError();
+              }}
               required
             />
             <select
@@ -73,6 +79,11 @@ export default function ModalInviteMemberDropdown({
             </button>
           </form>
         )}
+        {error && (
+          <div className="text-red-400 text-sm mb-2 p-2 bg-red-900/20 rounded">
+            {error}
+          </div>
+        )}
         <div>
           <h4 className="text-white font-semibold mb-1">Members:</h4>
           <ul>
@@ -87,7 +98,7 @@ export default function ModalInviteMemberDropdown({
                     <span className="text-yellow-400">(pending)</span>
                   )}
                 </span>
-                {canEdit &&
+                {isOwner &&
                   m.status !== "pending" &&
                   m.role !== "owner" &&
                   m.user_id !== userId && (

@@ -22,6 +22,10 @@ export default function Column({
   setNewTask,
   addingTask,
   toast,
+  // New props for assignment
+  boardMembers,
+  onAssignTask,
+  currentUserId,
 }) {
   console.log(role, canEdit, isViewer);
   // Daftar warna kolom (bisa diimpor dari util jika ingin)
@@ -72,12 +76,7 @@ export default function Column({
 
   // Jika state newTask kolom ini direset (berhasil tambah), kita bisa otomatis tutup form
   useEffect(() => {
-    if (showAddForm) {
-      const nt = newTask[col.id];
-      if (nt && nt.title === "" && nt.content === "") {
-        setShowAddForm(false);
-      }
-    }
+    // Removed auto-close logic when input is empty
   }, [newTask[col.id]]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [isHighlight, setIsHighlight] = useState(false);
@@ -218,6 +217,7 @@ export default function Column({
               // tetap buka form jika gagal
             } else {
               setSubmitAttempt(false);
+              setShowAddForm(false); // Tutup form ketika berhasil simpan
             }
           }}
           className="mb-3 flex flex-col gap-2"
@@ -227,6 +227,7 @@ export default function Column({
               title: "",
               content: "",
               deadline: "",
+              assigned_to: null,
             };
             const titleEmpty = submitAttempt && !data.title.trim();
             return (
@@ -248,6 +249,7 @@ export default function Column({
                           title: "",
                           content: "",
                           deadline: "",
+                          assigned_to: null,
                         }),
                         title: e.target.value,
                       },
@@ -274,6 +276,7 @@ export default function Column({
                           title: "",
                           content: "",
                           deadline: "",
+                          assigned_to: null,
                         }),
                         content: e.target.value,
                       },
@@ -294,6 +297,7 @@ export default function Column({
                             title: "",
                             content: "",
                             deadline: "",
+                            assigned_to: null,
                           }),
                           deadline: e.target.value,
                         },
@@ -317,6 +321,36 @@ export default function Column({
                     </button>
                   )}
                 </div>
+                {/* Assign Task Dropdown */}
+                <div className="flex items-center gap-2">
+                  <select
+                    className="p-2 rounded bg-gray-700 text-white border border-gray-600 text-xs flex-1 focus:outline-none focus:ring-1 focus:ring-lime-400"
+                    value={data.assigned_to || ""}
+                    onChange={(e) =>
+                      setNewTask((t) => ({
+                        ...t,
+                        [col.id]: {
+                          ...(t[col.id] || {
+                            title: "",
+                            content: "",
+                            deadline: "",
+                            assigned_to: null,
+                          }),
+                          assigned_to: e.target.value || null,
+                        },
+                      }))
+                    }
+                    disabled={addingTask[col.id]}
+                  >
+                    <option value="">Tidak ada assignee</option>
+                    {boardMembers.map((member) => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.profiles?.full_name || member.profiles?.email} (
+                        {member.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </>
             );
           })()}
@@ -329,7 +363,12 @@ export default function Column({
                 setSubmitAttempt(false);
                 setNewTask((t) => ({
                   ...t,
-                  [col.id]: { title: "", content: "", deadline: "" },
+                  [col.id]: {
+                    title: "",
+                    content: "",
+                    deadline: "",
+                    assigned_to: null,
+                  },
                 }));
               }}
               disabled={addingTask[col.id]}
@@ -381,6 +420,10 @@ export default function Column({
         handleDropOnTask={handleDropTask}
         handleUpdateTask={handleUpdateTask}
         toast={toast}
+        // New props for assignment
+        boardMembers={boardMembers}
+        onAssignTask={onAssignTask}
+        currentUserId={currentUserId}
       />
     </div>
   );

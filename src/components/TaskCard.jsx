@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FiTrash2, FiEdit2, FiCalendar, FiX } from "react-icons/fi";
 import { getDeadlineStatus } from "../lib/deadline";
+import TaskAssignmentDropdown from "./TaskAssignmentDropdown";
 
 /**
  * TaskCard component - handles individual task display and quick actions
@@ -18,6 +19,10 @@ export default function TaskCard({
   truncatedDesc,
   makeMeasureRef,
   toggleDesc,
+  // New props for assignment
+  boardMembers,
+  onAssignTask,
+  currentUserId,
 }) {
   const [quickDeadlineTaskId, setQuickDeadlineTaskId] = useState(null);
   const [quickDeadlineValue, setQuickDeadlineValue] = useState("");
@@ -93,19 +98,36 @@ export default function TaskCard({
       }}
     >
       <div className="flex flex-col gap-2">
-        <div className="flex items-start">
+        {/* Header: Title dan Assignment Button */}
+        <div className="flex items-start justify-between gap-2 min-h-[24px]">
           <div
-            className="text-sm leading-snug break-words flex-1 text-left"
+            className="text-sm font-semibold leading-tight break-words flex-1 text-left"
             onDoubleClick={() => onStartEdit(task)}
           >
-            {task.title && (
-              <span className="font-semibold block mb-1 leading-tight break-anywhere">
-                {task.title}
-              </span>
-            )}
-            {renderDescription()}
+            {task.title}
+          </div>
+
+          {/* Assignment button di kanan atas */}
+          <div className="flex-shrink-0">
+            <TaskAssignmentDropdown
+              task={task}
+              boardMembers={boardMembers}
+              onAssign={onAssignTask}
+              canEdit={canEdit}
+              currentUserId={currentUserId}
+            />
           </div>
         </div>
+
+        {/* Deskripsi di bawah title */}
+        {task.content && (
+          <div
+            className="text-sm leading-snug break-words text-left"
+            onDoubleClick={() => onStartEdit(task)}
+          >
+            {renderDescription()}
+          </div>
+        )}
 
         {/* Quick deadline form */}
         {quickDeadlineTaskId === task.id && canEdit && (

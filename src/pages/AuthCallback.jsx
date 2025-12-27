@@ -14,7 +14,9 @@ export default function AuthCallback() {
           await supabase.auth.exchangeCodeForSession(window.location.href);
         }
       } finally {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         navigate(session ? "/home" : "/", { replace: true });
       }
     })();

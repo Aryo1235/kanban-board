@@ -33,7 +33,7 @@ export default function LandingPage() {
             </h3>
 
             <Link
-              to="/auth"
+              to="/login"
               className="bg-green-700 text-gray-100 font-semibold py-3 px-8 rounded-md hover:bg-green-800 transition duration-300"
             >
               Get Started

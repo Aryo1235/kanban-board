@@ -1,4 +1,3 @@
-import AuthForm from "../components/AuthForm";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import BoardInviteAccept from "../components/BoardInviteAccept";

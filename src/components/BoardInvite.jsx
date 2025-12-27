@@ -7,6 +7,7 @@ import ModalInviteMemberDropdown from "./ModalInviteMemberDropdown";
 export default function BoardInvite({
   boardId,
   canEdit,
+  isOwner,
   members,
   loading,
   error,
@@ -14,6 +15,7 @@ export default function BoardInvite({
   inviteMember,
   updateRole,
   removeMember,
+  clearError,
   userId,
 }) {
   // State/modal untuk UI saja
@@ -73,7 +75,7 @@ export default function BoardInvite({
   return (
     <>
       <div className="w-full flex justify-center items-center h-12 mb-32">
-        <div className=" w-full  flex gap-4 justify-start items-center px-2">
+        <div className=" w-full  flex gap-4 items-center px-2">
           <div className="bg-fuchsia-300 flex items-center gap-2 px-4 py-2 rounded-md">
             {members
               .filter((member) => member.status === "accepted")
@@ -111,20 +113,24 @@ export default function BoardInvite({
               </div>
             )}
           </div>
-          <button
-            className="py-3 px-4 bg-amber-300 rounded-md text-md text-white"
-            onClick={(e) => {
-              setOpenInvite(true);
-              setSelectedMember(null); // Tutup modal profile
-              const rect = e.currentTarget.getBoundingClientRect();
-              setInviteAnchor({
-                top: rect.bottom + window.scrollY,
-                left: rect.left + window.scrollX,
-              });
-            }}
-          >
-            Invite a new member
-          </button>
+          <div className="flex items-center gap-4">
+            {isOwner && (
+              <button
+                className="py-3 px-4 bg-amber-300 rounded-md text-md text-white"
+                onClick={(e) => {
+                  setOpenInvite(true);
+                  setSelectedMember(null); // Tutup modal profile
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setInviteAnchor({
+                    top: rect.bottom + window.scrollY,
+                    left: rect.left + window.scrollX,
+                  });
+                }}
+              >
+                Invite a new member
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <ModalProfileMembers
@@ -138,6 +144,7 @@ export default function BoardInvite({
         anchorPos={inviteAnchor}
         onClose={() => setOpenInvite(false)}
         canEdit={canEdit}
+        isOwner={isOwner}
         inviteMember={inviteMember}
         members={members}
         userId={userId}
@@ -146,6 +153,7 @@ export default function BoardInvite({
         fetchMembers={fetchMembers}
         loading={loading}
         error={error}
+        clearError={clearError}
       />
     </>
   );

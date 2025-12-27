@@ -130,6 +130,11 @@ export default function useBoardInvite(boardId) {
     }
   };
 
+  // Clear error
+  const clearError = () => {
+    setError("");
+  };
+
   return {
     loading,
     error,
@@ -139,5 +144,6 @@ export default function useBoardInvite(boardId) {
     updateRole,
     removeMember,
     respondInvite,
+    clearError,
   };
 }
