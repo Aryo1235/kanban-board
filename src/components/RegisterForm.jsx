@@ -11,6 +11,7 @@ export default function RegisterForm({ onAuth }) {
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Validation functions
   const validateEmail = (email) => {
@@ -58,6 +59,7 @@ export default function RegisterForm({ onAuth }) {
     setEmailError("");
     setPasswordError("");
     setError("");
+    setSuccessMessage("");
 
     // Validate inputs
     let hasError = false;
@@ -90,6 +92,9 @@ export default function RegisterForm({ onAuth }) {
         },
       });
       if (result.error) throw result.error;
+      setSuccessMessage(
+        "registrasi berhasil silahkan cek email anda untuk vertifikasi"
+      );
       console.log("Register success");
     } catch (err) {
       console.error("Register failed:", err);
@@ -138,6 +143,14 @@ export default function RegisterForm({ onAuth }) {
     checkSession();
   }, [navigate, location.pathname]);
 
+  // Auto-hide success message
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="bg-gray-800 p-10 flex gap-6 justify-between rounded-md shadow-lg shadow-green-500 max-w-4xl w-full min-w-[900px]">
@@ -150,6 +163,30 @@ export default function RegisterForm({ onAuth }) {
           <h2 className="text-2xl font-bold text-white mb-4 text-center">
             Register
           </h2>
+          {successMessage && (
+            <div className="w-full mb-4 p-4 bg-green-600 text-white rounded-md flex items-center justify-between">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {successMessage}
+              </div>
+              <button
+                onClick={() => setSuccessMessage("")}
+                className="text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <form onSubmit={handleSubmit}>
             <div className="w-full mb-3">
               <input
